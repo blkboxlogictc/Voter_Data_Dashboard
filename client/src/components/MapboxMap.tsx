@@ -7,9 +7,9 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Set a valid Mapbox token to enable maps
-// For deployment, this would come from environment variables
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-(mapboxgl as any).accessToken = MAPBOX_TOKEN;
+// Using a hardcoded token for development purposes only
+// In production, this would come from environment variables securely
+(mapboxgl as any).accessToken = "pk.eyJ1IjoiZGVtby11c2VyIiwiYSI6ImNsbWV3Z3kzcjA3YnEzanA5bGwzZnM0enQifQ.RFFVqLO7M2K7-ZKCLcxg2A";
 
 interface MapboxMapProps {
   geoData: any | null;
@@ -311,25 +311,40 @@ export default function MapboxMap({ geoData, districtData, districtType }: Mapbo
       // Fit the map to the bounds of the GeoJSON
       // Create an empty bounds object
       const bounds = new mapboxgl.LngLatBounds();
-      processedGeoJSON.features.forEach((feature: any) => {
-        if (feature.geometry && feature.geometry.coordinates) {
-          if (feature.geometry.type === 'Polygon') {
-            feature.geometry.coordinates.forEach((ring: number[][]) => {
-              ring.forEach((coord: number[]) => {
-                bounds.extend([coord[0], coord[1]]);
+      
+      try {
+        processedGeoJSON.features.forEach((feature: any) => {
+          if (feature.geometry && feature.geometry.coordinates) {
+            if (feature.geometry.type === 'Polygon') {
+              feature.geometry.coordinates.forEach((ring: number[][]) => {
+                if (Array.isArray(ring)) {
+                  ring.forEach((coord: number[]) => {
+                    if (Array.isArray(coord) && coord.length >= 2) {
+                      bounds.extend([coord[0], coord[1]]);
+                    }
+                  });
+                }
               });
-            });
-          } else if (feature.geometry.type === 'MultiPolygon') {
-            feature.geometry.coordinates.forEach((polygon: number[][][]) => {
-              polygon.forEach((ring: number[][]) => {
-                ring.forEach((coord: number[]) => {
-                  bounds.extend([coord[0], coord[1]]);
-                });
+            } else if (feature.geometry.type === 'MultiPolygon') {
+              feature.geometry.coordinates.forEach((polygon: number[][][]) => {
+                if (Array.isArray(polygon)) {
+                  polygon.forEach((ring: number[][]) => {
+                    if (Array.isArray(ring)) {
+                      ring.forEach((coord: number[]) => {
+                        if (Array.isArray(coord) && coord.length >= 2) {
+                          bounds.extend([coord[0], coord[1]]);
+                        }
+                      });
+                    }
+                  });
+                }
               });
-            });
+            }
           }
-        }
-      });
+        });
+      } catch (error) {
+        console.error('Error extending bounds:', error);
+      }
       
       // Fit to bounds with padding
       if (!bounds.isEmpty()) {
@@ -368,26 +383,40 @@ export default function MapboxMap({ geoData, districtData, districtType }: Mapbo
     try {
       const bounds = new mapboxgl.LngLatBounds();
       
-      // Calculate bounds from all features
-      geoData.features.forEach((feature: any) => {
-        if (feature.geometry && feature.geometry.coordinates) {
-          if (feature.geometry.type === 'Polygon') {
-            feature.geometry.coordinates.forEach((ring: number[][]) => {
-              ring.forEach((coord: number[]) => {
-                bounds.extend([coord[0], coord[1]]);
+      // Calculate bounds from all features with extra safety checks
+      try {
+        geoData.features.forEach((feature: any) => {
+          if (feature.geometry && feature.geometry.coordinates) {
+            if (feature.geometry.type === 'Polygon') {
+              feature.geometry.coordinates.forEach((ring: number[][]) => {
+                if (Array.isArray(ring)) {
+                  ring.forEach((coord: number[]) => {
+                    if (Array.isArray(coord) && coord.length >= 2) {
+                      bounds.extend([coord[0], coord[1]]);
+                    }
+                  });
+                }
               });
-            });
-          } else if (feature.geometry.type === 'MultiPolygon') {
-            feature.geometry.coordinates.forEach((polygon: number[][][]) => {
-              polygon.forEach((ring: number[][]) => {
-                ring.forEach((coord: number[]) => {
-                  bounds.extend([coord[0], coord[1]]);
-                });
+            } else if (feature.geometry.type === 'MultiPolygon') {
+              feature.geometry.coordinates.forEach((polygon: number[][][]) => {
+                if (Array.isArray(polygon)) {
+                  polygon.forEach((ring: number[][]) => {
+                    if (Array.isArray(ring)) {
+                      ring.forEach((coord: number[]) => {
+                        if (Array.isArray(coord) && coord.length >= 2) {
+                          bounds.extend([coord[0], coord[1]]);
+                        }
+                      });
+                    }
+                  });
+                }
               });
-            });
+            }
           }
-        }
-      });
+        });
+      } catch (error) {
+        console.error('Error extending bounds in resetView:', error);
+      }
       
       // Fit to bounds with padding
       if (!bounds.isEmpty()) {
