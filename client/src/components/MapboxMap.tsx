@@ -6,10 +6,11 @@ import { DistrictType } from "@shared/schema";
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-// Set a valid Mapbox token to enable maps
-// Using a hardcoded token for development purposes only
-// In production, this would come from environment variables securely
-(mapboxgl as any).accessToken = "pk.eyJ1IjoiZGVtby11c2VyIiwiYSI6ImNsbWV3Z3kzcjA3YnEzanA5bGwzZnM0enQifQ.RFFVqLO7M2K7-ZKCLcxg2A";
+// Set Mapbox token from environment variables if available
+// In development, we'll use the token from the environment
+// or fall back to a basic style that doesn't require authentication
+const envToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+(mapboxgl as any).accessToken = envToken || 'public-token-for-testing';
 
 interface MapboxMapProps {
   geoData: any | null;
@@ -30,9 +31,33 @@ export default function MapboxMap({ geoData, districtData, districtType }: Mapbo
     if (!mapContainerRef.current) return;
     
     try {
+      // Use OpenStreetMap style that doesn't require token
       const mapInstance = new mapboxgl.Map({
         container: mapContainerRef.current,
-        style: 'mapbox://styles/mapbox/light-v11',
+        style: {
+          version: 8,
+          sources: {
+            'osm-tiles': {
+              type: 'raster',
+              tiles: [
+                'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png'
+              ],
+              tileSize: 256,
+              attribution: '© OpenStreetMap contributors'
+            }
+          },
+          layers: [
+            {
+              id: 'osm-tiles',
+              type: 'raster',
+              source: 'osm-tiles',
+              minzoom: 0,
+              maxzoom: 19
+            }
+          ]
+        },
         center: [-98.5795, 39.8283], // Center of the US
         zoom: 3
       });

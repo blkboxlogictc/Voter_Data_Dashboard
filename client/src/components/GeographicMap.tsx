@@ -1,10 +1,24 @@
-import { useEffect, useRef, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Download, Home, Layers, Grid, MapPin } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { DistrictType } from "@shared/schema";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { useRef, useEffect } from 'react';
+import { MapContainer, TileLayer, GeoJSON, Popup, LayersControl, ZoomControl } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import { Card, CardContent } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { DistrictType } from '@shared/schema';
+import { MapPin, Layers, Grid, Download, Home } from 'lucide-react';
+import L from 'leaflet';
+
+// Fix Leaflet default icon issues
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+});
+
+L.Marker.prototype.options.icon = DefaultIcon;
 
 interface GeographicMapProps {
   geoData: any | null;
@@ -13,328 +27,152 @@ interface GeographicMapProps {
 }
 
 export default function GeographicMap({ geoData, districtData, districtType }: GeographicMapProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [mapLayer, setMapLayer] = useState<'density' | 'turnout' | 'party' | 'race'>('density');
-  const [mapInstance, setMapInstance] = useState<L.Map | null>(null);
-  const [geoJsonLayer, setGeoJsonLayer] = useState<L.GeoJSON | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map>(null);
+  const geoJsonLayerRef = useRef<L.GeoJSON | null>(null);
   const { toast } = useToast();
-
-  // Initialize map
-  useEffect(() => {
-    if (!mapRef.current || mapInstance) return;
+  
+  // Style function for GeoJSON features
+  const getFeatureStyle = (feature: any) => {
+    const districtId = feature.properties?.id || 
+                      feature.properties?.PRECINCT || 
+                      feature.properties?.DISTRICT_ID ||
+                      feature.properties?.districtId;
     
-    // Create Leaflet map instance
-    const map = L.map(mapRef.current, {
-      center: [39.8283, -98.5795], // Center of the US
-      zoom: 4,
-      zoomControl: true,
-    });
-    
-    // Add OpenStreetMap tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(map);
-    
-    setMapInstance(map);
-    
-    return () => {
-      map.remove();
-    };
-  }, [mapInstance]);
-
-  // Update GeoJSON layer when data or district type changes
-  useEffect(() => {
-    if (!mapInstance || !geoData) return;
-    
-    // Clear existing GeoJSON layer
-    if (geoJsonLayer) {
-      geoJsonLayer.removeFrom(mapInstance);
-      setGeoJsonLayer(null);
-    }
-    
-    // Create tooltip div if it doesn't exist
-    if (!document.getElementById('map-tooltip')) {
-      const tooltipDiv = document.createElement('div');
-      tooltipDiv.id = 'map-tooltip';
-      tooltipDiv.className = 'absolute bg-white rounded-md shadow-lg p-3 z-50 pointer-events-none';
-      tooltipDiv.style.display = 'none';
-      document.body.appendChild(tooltipDiv);
-    }
-    
-    // Function to get color based on value and selected layer
-    const getColor = (feature: any) => {
-      if (!feature || !feature.properties) return '#CCCCCC';
-      
-      const districtId = feature.properties.id || 
-                       feature.properties.PRECINCT || 
-                       feature.properties.DISTRICT_ID ||
-                       feature.properties.districtId;
-      
-      const district = districtData[districtId];
-      
-      if (!district) return '#CCCCCC'; // Gray for no data
-      
-      if (mapLayer === 'density') {
-        const density = district.voterDensity || 0;
-        if (density > 0.75) return '#255c1a'; // Very High
-        if (density > 0.5) return '#4d9636';  // High
-        if (density > 0.25) return '#83c75d'; // Medium
-        return '#c5e8b7';                     // Low
-      } 
-      
-      if (mapLayer === 'turnout') {
-        const turnout = district.turnout || 0;
-        if (turnout > 0.75) return '#1a237e'; // Very High
-        if (turnout > 0.5) return '#3949ab';  // High
-        if (turnout > 0.25) return '#7986cb'; // Medium
-        return '#c5cae9';                     // Low
-      }
-      
-      if (mapLayer === 'party') {
-        const party = district.majorityParty?.toLowerCase();
-        if (party === 'democratic') return '#1976d2';
-        if (party === 'republican') return '#d32f2f';
-        if (party === 'green') return '#388e3c';
-        if (party === 'libertarian') return '#ffa726';
-        if (party === 'independent') return '#9575cd';
-        return '#757575'; // Unknown
-      }
-      
-      if (mapLayer === 'race') {
-        const race = district.majorityRace?.toLowerCase();
-        if (race === 'white') return '#90caf9';
-        if (race === 'black' || race === 'african american') return '#5c6bc0';
-        if (race === 'hispanic' || race === 'latino') return '#26a69a';
-        if (race === 'asian') return '#ffb74d';
-        if (race === 'native american') return '#ef6c00';
-        if (race === 'pacific islander') return '#1e88e5';
-        if (race === 'other') return '#757575';
-        if (race === 'multiracial') return '#ab47bc';
-        return '#bdbdbd'; // Unknown
-      }
-      
-      return '#CCCCCC';
-    };
-    
-    // Function to style GeoJSON features
-    const style = (feature: any) => {
+    if (!districtId || !districtData[districtId]) {
       return {
-        fillColor: getColor(feature),
+        fillColor: '#cccccc',
         weight: 1,
         opacity: 1,
         color: 'white',
         fillOpacity: 0.7
       };
-    };
+    }
     
-    // Function to handle mouseover event
-    const highlightFeature = (e: L.LeafletMouseEvent) => {
-      const layer = e.target;
-      const tooltipDiv = document.getElementById('map-tooltip');
-      
-      if (!tooltipDiv) return;
-      
-      // Highlight the district
-      layer.setStyle({
-        weight: 3,
-        color: '#666',
-        fillOpacity: 0.9
-      });
-      
-      if (layer.bringToFront) {
-        layer.bringToFront();
-      }
-      
-      // Get district data for tooltip
-      if (!layer.feature || !layer.feature.properties) return;
-      
-      const feature = layer.feature;
-      const districtId = feature.properties.id || 
-                       feature.properties.PRECINCT || 
-                       feature.properties.DISTRICT_ID ||
-                       feature.properties.districtId;
-      
+    const district = districtData[districtId];
+    const voterDensity = district.voterDensity || 0;
+    
+    // Color based on voter density
+    let fillColor = '#cccccc'; // default gray
+    if (voterDensity > 0.75) fillColor = '#255c1a'; // Very High
+    else if (voterDensity > 0.5) fillColor = '#4d9636'; // High
+    else if (voterDensity > 0.25) fillColor = '#83c75d'; // Medium
+    else fillColor = '#c5e8b7'; // Low
+    
+    return {
+      fillColor,
+      weight: 1,
+      opacity: 1,
+      color: 'white',
+      fillOpacity: 0.7
+    };
+  };
+  
+  // Handle hovering and clicking on districts
+  const onEachFeature = (feature: any, layer: L.Layer) => {
+    const districtId = feature.properties?.id || 
+                      feature.properties?.PRECINCT || 
+                      feature.properties?.DISTRICT_ID ||
+                      feature.properties?.districtId;
+    
+    if (districtId && districtData[districtId]) {
       const district = districtData[districtId];
       
-      if (district) {
-        // Update tooltip content
-        tooltipDiv.innerHTML = `
-          <h4 class="font-medium text-sm text-neutral-900 border-b pb-1 mb-2">${districtType.charAt(0).toUpperCase() + districtType.slice(1)} ${districtId}</h4>
+      // Add tooltip with basic district info
+      layer.bindTooltip(`${districtType.charAt(0).toUpperCase() + districtType.slice(1)} ${districtId}`);
+      
+      // Add popup with detailed district info
+      const popupContent = `
+        <div class="p-2">
+          <h4 class="font-medium text-sm border-b pb-1 mb-2">
+            ${districtType.charAt(0).toUpperCase() + districtType.slice(1)} ${districtId}
+          </h4>
           <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
             <div class="text-neutral-500">Registered Voters:</div>
-            <div class="font-medium text-right text-neutral-900">${district.registeredVoters?.toLocaleString() || 'N/A'}</div>
+            <div class="font-medium text-right">
+              ${district.registeredVoters?.toLocaleString() || 'N/A'}
+            </div>
             
             <div class="text-neutral-500">Turnout:</div>
-            <div class="font-medium text-right text-neutral-900">${district.turnout ? `${(district.turnout * 100).toFixed(1)}%` : 'N/A'}</div>
+            <div class="font-medium text-right">
+              ${district.turnout ? `${(district.turnout * 100).toFixed(1)}%` : 'N/A'}
+            </div>
             
             <div class="text-neutral-500">Party Majority:</div>
-            <div class="font-medium text-right text-neutral-900">${district.majorityParty || 'N/A'}</div>
+            <div class="font-medium text-right">
+              ${district.majorityParty || 'N/A'}
+            </div>
             
             <div class="text-neutral-500">Avg. Age:</div>
-            <div class="font-medium text-right text-neutral-900">${district.averageAge?.toFixed(1) || 'N/A'}</div>
+            <div class="font-medium text-right">
+              ${district.averageAge?.toFixed(1) || 'N/A'}
+            </div>
           </div>
-        `;
-        
-        // Position tooltip based on mouse position
-        const rect = mapRef.current?.getBoundingClientRect();
-        
-        if (rect && e.originalEvent) {
-          tooltipDiv.style.display = 'block';
-          tooltipDiv.style.left = `${e.originalEvent.clientX + 15}px`;
-          tooltipDiv.style.top = `${e.originalEvent.clientY + 15}px`;
-        }
-      }
-    };
-    
-    // Function to handle mouseout event
-    const resetHighlight = (e: L.LeafletEvent) => {
-      if (geoJsonLayer && geoJsonLayer.resetStyle) {
-        geoJsonLayer.resetStyle(e.target);
-      }
+        </div>
+      `;
       
-      const tooltipDiv = document.getElementById('map-tooltip');
-      if (tooltipDiv) {
-        tooltipDiv.style.display = 'none';
-      }
-    };
-    
-    // Function to handle click event
-    const zoomToFeature = (e: L.LeafletEvent) => {
-      if (e.target && e.target.getBounds && mapInstance) {
-        mapInstance.fitBounds(e.target.getBounds());
-      }
-    };
-    
-    // Function to bind events to each feature
-    const onEachFeature = (feature: any, layer: L.Layer) => {
+      layer.bindPopup(popupContent);
+      
+      // Change style on hover
       layer.on({
-        mouseover: highlightFeature,
-        mouseout: resetHighlight,
-        click: zoomToFeature
-      });
-    };
-    
-    // Create GeoJSON layer
-    try {
-      // Test with a simple polygon first to verify Leaflet is working
-      console.log("Creating test GeoJSON layer");
-      const testLayer = L.geoJSON({
-        type: "FeatureCollection",
-        features: [{
-          type: "Feature",
-          properties: { id: "test" },
-          geometry: {
-            type: "Polygon",
-            coordinates: [[[-80, 25], [-80, 25.5], [-79.5, 25.5], [-79.5, 25], [-80, 25]]]
+        mouseover: (e) => {
+          const layer = e.target;
+          layer.setStyle({
+            weight: 2,
+            color: '#000',
+            fillOpacity: 0.7
+          });
+          layer.bringToFront();
+        },
+        mouseout: (e) => {
+          if (geoJsonLayerRef.current) {
+            geoJsonLayerRef.current.resetStyle(e.target);
           }
-        }]
-      } as any).addTo(mapInstance);
-      
-      console.log("Test layer created successfully");
-      testLayer.removeFrom(mapInstance);
-      
-      // Now try with the actual data
-      console.log('Processing actual GeoJSON data');
-      
-      // Sanitize the GeoJSON data to ensure it's compatible with Leaflet
-      // 1. First, ensure we properly handle 3D coordinates by converting to 2D
-      const sanitizedFeatures = geoData.features.map((feature: any) => {
-        const sanitizedFeature = { ...feature };
-        
-        const processCoordinates = (coords: any[]): any[] => {
-          if (Array.isArray(coords[0])) {
-            return coords.map(c => processCoordinates(c));
-          } else if (coords.length > 2) {
-            // If it's a coordinate with more than 2 values (e.g., [lon, lat, alt]),
-            // take only the first two (longitude, latitude)
-            return [coords[0], coords[1]];
-          }
-          return coords;
-        };
-        
-        if (
-          sanitizedFeature.geometry && 
-          sanitizedFeature.geometry.coordinates &&
-          Array.isArray(sanitizedFeature.geometry.coordinates)
-        ) {
-          sanitizedFeature.geometry.coordinates = processCoordinates(sanitizedFeature.geometry.coordinates);
         }
-        
-        return sanitizedFeature;
-      });
-      
-      console.log('Created sanitized features');
-      
-      // Create a new GeoJSON object with the sanitized features
-      const sanitizedGeoJSON = {
-        type: "FeatureCollection",
-        features: sanitizedFeatures
-      };
-      
-      // Create the Leaflet GeoJSON layer
-      console.log('Creating Leaflet GeoJSON layer');
-      const layer = L.geoJSON(sanitizedGeoJSON as any, {
-        style: style,
-        onEachFeature: onEachFeature
-      }).addTo(mapInstance);
-      
-      console.log('GeoJSON layer created successfully');
-      setGeoJsonLayer(layer);
-      
-      // Fit the map to the bounds of the GeoJSON layer
-      if (layer.getBounds) {
-        mapInstance.fitBounds(layer.getBounds());
-      }
-    } catch (error) {
-      console.error('Error creating GeoJSON layer:', error);
-      toast({
-        title: 'Map Error',
-        description: `Failed to render the geographic map: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your GeoJSON data.`,
-        variant: 'destructive'
       });
     }
-  }, [geoData, districtData, districtType, mapInstance, mapLayer, toast, geoJsonLayer]);
-
-  const handleMapLayerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setMapLayer(e.target.value as 'density' | 'turnout' | 'party' | 'race');
   };
-
+  
+  // Reset map view to show all districts
   const handleResetMapView = () => {
-    if (mapInstance && geoJsonLayer && geoJsonLayer.getBounds) {
-      mapInstance.fitBounds(geoJsonLayer.getBounds());
+    if (mapRef.current && geoJsonLayerRef.current) {
+      try {
+        const bounds = geoJsonLayerRef.current.getBounds();
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      } catch (error) {
+        console.error('Error resetting view:', error);
+      }
     }
   };
-
+  
+  // Toggle heatmap
   const handleToggleHeatmap = () => {
     toast({
       title: "Toggle Heatmap",
-      description: "Heatmap toggle functionality would be implemented here",
+      description: "Heatmap functionality would be implemented here",
     });
   };
-
+  
+  // Show all districts
   const handleShowAllDistricts = () => {
-    if (mapInstance && geoJsonLayer && geoJsonLayer.getBounds) {
-      mapInstance.fitBounds(geoJsonLayer.getBounds());
-    }
+    handleResetMapView();
   };
-
+  
+  // Download map as image
   const handleDownloadMapImage = () => {
     toast({
-      title: "Exporting Map",
-      description: "This would trigger a map export to an image file",
+      title: "Export Map",
+      description: "This feature would allow exporting the map as an image. Currently using Leaflet which doesn't support this natively.",
     });
   };
-
+  
   return (
     <Card className="bg-white rounded-lg shadow-sm overflow-hidden">
       <div className="px-4 py-3 border-b border-neutral-200 flex justify-between items-center">
-        <h3 className="font-medium text-neutral-900">Voter Density & Demographics Map</h3>
+        <h3 className="font-medium text-neutral-900">Voter Demographics Map</h3>
         <div className="flex items-center space-x-2">
           <select 
             className="border border-neutral-300 rounded px-2 py-1 text-sm focus:ring-primary focus:border-primary"
-            value={mapLayer}
-            onChange={handleMapLayerChange}
+            defaultValue="density"
           >
             <option value="density">Voter Density</option>
             <option value="turnout">Voter Turnout</option>
@@ -344,13 +182,56 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
         </div>
       </div>
       <CardContent className="p-4">
-        <div ref={mapRef} className="w-full h-[500px] bg-gray-100 rounded relative">
-          {(!geoData || !districtData) && (
+        <div className="w-full h-[500px] bg-gray-100 rounded relative">
+          {(!geoData || !districtData) ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <MapPin className="h-10 w-10 text-neutral-300 mb-2" />
               <p className="text-neutral-500">Interactive Geographic Map</p>
               <p className="text-sm text-neutral-400 mt-2">Upload and process data files to generate the map</p>
             </div>
+          ) : (
+            <MapContainer 
+              center={[39.8283, -98.5795]} 
+              zoom={4} 
+              style={{ height: '100%', width: '100%' }}
+              zoomControl={false}
+              whenCreated={(map) => {
+                // @ts-ignore - type definition issue with react-leaflet
+                mapRef.current = map;
+              }}
+            >
+              <ZoomControl position="topright" />
+              <LayersControl position="topright">
+                <LayersControl.BaseLayer checked name="OpenStreetMap">
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  />
+                </LayersControl.BaseLayer>
+                <LayersControl.BaseLayer name="Topo Map">
+                  <TileLayer
+                    url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> contributors'
+                  />
+                </LayersControl.BaseLayer>
+              </LayersControl>
+              
+              {geoData && (
+                <GeoJSON 
+                  data={geoData}
+                  style={getFeatureStyle}
+                  onEachFeature={onEachFeature}
+                  ref={(layer) => {
+                    if (layer) {
+                      geoJsonLayerRef.current = layer;
+                      setTimeout(() => {
+                        handleResetMapView();
+                      }, 100);
+                    }
+                  }}
+                />
+              )}
+            </MapContainer>
           )}
         </div>
         
@@ -358,89 +239,22 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
         <div className="mt-4 p-3 bg-neutral-50 rounded border border-neutral-200">
           <h4 className="text-sm font-medium mb-2 text-neutral-900">Legend</h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-2 gap-x-4">
-            {mapLayer === 'density' && (
-              <>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#c5e8b7' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Low Density</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#83c75d' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Medium Density</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#4d9636' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">High Density</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#255c1a' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Very High Density</span>
-                </div>
-              </>
-            )}
-            
-            {mapLayer === 'turnout' && (
-              <>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#c5cae9' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Low Turnout</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#7986cb' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Medium Turnout</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#3949ab' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">High Turnout</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#1a237e' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Very High Turnout</span>
-                </div>
-              </>
-            )}
-            
-            {mapLayer === 'party' && (
-              <>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#1976d2' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Democratic</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#d32f2f' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Republican</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#388e3c' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Green</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ffa726' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Libertarian</span>
-                </div>
-              </>
-            )}
-            
-            {mapLayer === 'race' && (
-              <>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#90caf9' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">White</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#5c6bc0' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Black</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#26a69a' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Hispanic</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="w-4 h-4 rounded" style={{ backgroundColor: '#ffb74d' }}></div>
-                  <span className="ml-2 text-xs text-neutral-700">Asian</span>
-                </div>
-              </>
-            )}
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#c5e8b7' }}></div>
+              <span className="ml-2 text-xs text-neutral-700">Low Density</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#83c75d' }}></div>
+              <span className="ml-2 text-xs text-neutral-700">Medium Density</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#4d9636' }}></div>
+              <span className="ml-2 text-xs text-neutral-700">High Density</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-4 h-4 rounded" style={{ backgroundColor: '#255c1a' }}></div>
+              <span className="ml-2 text-xs text-neutral-700">Very High Density</span>
+            </div>
           </div>
         </div>
         
@@ -476,9 +290,6 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
           </button>
         </div>
       </CardContent>
-      
-      {/* Hidden tooltip div - will be controlled by the map */}
-      <div ref={tooltipRef} id="map-tooltip" className="hidden absolute bg-white rounded-md shadow-lg p-3 z-50 pointer-events-none"></div>
     </Card>
   );
 }

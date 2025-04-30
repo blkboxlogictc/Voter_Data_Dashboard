@@ -5,7 +5,7 @@ import PartyAffiliationChart from "@/components/charts/PartyAffiliationChart";
 import AgeGroupTurnoutChart from "@/components/charts/AgeGroupTurnoutChart";
 import RacialDemographicsChart from "@/components/charts/RacialDemographicsChart";
 import TurnoutTrendChart from "@/components/charts/TurnoutTrendChart";
-import MapboxMap from "@/components/MapboxMap";
+import GeographicMap from "@/components/GeographicMap";
 import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
 import { useToast } from "@/hooks/use-toast";
