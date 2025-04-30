@@ -138,7 +138,7 @@ export default function Dashboard() {
               <TurnoutTrendChart data={processedData.turnoutTrends} />
             </div>
             
-            <MapboxMap 
+            <GeographicMap 
               geoData={geoFile && geoFile.isValid ? JSON.parse(geoFile.content) : null}
               districtData={processedData.districtData}
               districtType={districtType}

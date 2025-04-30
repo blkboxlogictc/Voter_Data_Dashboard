@@ -195,10 +195,7 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
               zoom={4} 
               style={{ height: '100%', width: '100%' }}
               zoomControl={false}
-              whenCreated={(map) => {
-                // @ts-ignore - type definition issue with react-leaflet
-                mapRef.current = map;
-              }}
+              ref={mapRef}
             >
               <ZoomControl position="topright" />
               <LayersControl position="topright">
