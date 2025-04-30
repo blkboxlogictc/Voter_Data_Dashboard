@@ -139,7 +139,7 @@ export default function Dashboard() {
             </div>
             
             <GeographicMap 
-              geoData={geoFile ? JSON.parse(geoFile.content) : null}
+              geoData={geoFile && geoFile.isValid ? JSON.parse(geoFile.content) : null}
               districtData={processedData.districtData}
               districtType={districtType}
             />

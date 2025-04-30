@@ -4,6 +4,7 @@ import { Download, Home, Layers, Grid, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DistrictType } from "@shared/schema";
 import L from "leaflet";
+import { GeoJSON } from 'geojson';
 import "leaflet/dist/leaflet.css";
 
 interface GeographicMapProps {
@@ -127,7 +128,7 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
     };
     
     // Function to handle mouseover event
-    const highlightFeature = (e: L.LeafletEvent) => {
+    const highlightFeature = (e: L.LeafletMouseEvent) => {
       const layer = e.target;
       const tooltipDiv = document.getElementById('map-tooltip');
       
@@ -172,12 +173,11 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
         
         // Position tooltip based on mouse position
         const rect = mapRef.current?.getBoundingClientRect();
-        const event = e.originalEvent as MouseEvent;
         
         if (rect) {
           tooltipDiv.style.display = 'block';
-          tooltipDiv.style.left = `${event.clientX + 15}px`;
-          tooltipDiv.style.top = `${event.clientY + 15}px`;
+          tooltipDiv.style.left = `${e.originalEvent.clientX + 15}px`;
+          tooltipDiv.style.top = `${e.originalEvent.clientY + 15}px`;
         }
       }
     };
@@ -208,7 +208,52 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
     
     // Create GeoJSON layer
     try {
-      const layer = L.geoJSON(geoData, {
+      // Add more detailed logging to diagnose the issue
+      console.log('GeoData structure:', {
+        type: geoData.type,
+        featuresCount: geoData.features?.length,
+        sampleFeature: geoData.features?.[0]
+      });
+      
+      // Validate GeoJSON structure
+      if (!geoData.type || !geoData.features || !Array.isArray(geoData.features)) {
+        throw new Error('Invalid GeoJSON structure: missing type or features array');
+      }
+      
+      // Check for empty features
+      if (geoData.features.length === 0) {
+        throw new Error('GeoJSON contains no features');
+      }
+      
+      // Process GeoJSON to ensure it's compatible with Leaflet
+      const normalizedGeoJSON = {
+        type: 'FeatureCollection',
+        features: geoData.features.map(feature => {
+          // Make a deep copy to avoid modifying the original
+          const newFeature = JSON.parse(JSON.stringify(feature));
+          
+          // If coordinates are 3D (with altitude), convert to 2D
+          if (newFeature.geometry && newFeature.geometry.coordinates) {
+            const processCoordinates = (coords: any[]): any[] => {
+              if (Array.isArray(coords[0])) {
+                // Array of coordinates
+                return coords.map(c => processCoordinates(c));
+              } else if (coords.length === 3) {
+                // Single coordinate with altitude - remove the altitude
+                return [coords[0], coords[1]];
+              }
+              return coords;
+            };
+            
+            newFeature.geometry.coordinates = processCoordinates(newFeature.geometry.coordinates);
+          }
+          
+          return newFeature;
+        })
+      };
+      
+      // Create GeoJSON layer with more explicit error handling and normalized GeoJSON
+      const layer = L.geoJSON(normalizedGeoJSON, {
         style: style,
         onEachFeature: onEachFeature
       }).addTo(mapInstance);
@@ -221,7 +266,7 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
       console.error('Error creating GeoJSON layer:', error);
       toast({
         title: 'Map Error',
-        description: 'Failed to render the geographic map. Please check your GeoJSON data.',
+        description: `Failed to render the geographic map: ${error instanceof Error ? error.message : 'Invalid GeoJSON format'}. Please check your GeoJSON data.`,
         variant: 'destructive'
       });
     }
