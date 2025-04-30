@@ -4,7 +4,7 @@ import { Download, Home, Layers, Grid, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DistrictType } from "@shared/schema";
 import L from "leaflet";
-import { GeoJSON } from 'geojson';
+import type { Feature, FeatureCollection, GeoJsonObject } from 'geojson';
 import "leaflet/dist/leaflet.css";
 
 interface GeographicMapProps {
@@ -206,54 +206,66 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
       });
     };
     
-    // Create GeoJSON layer
+    // Create GeoJSON layer with a simple approach
     try {
-      // Add more detailed logging to diagnose the issue
+      // Create a simple GeoJSON layer first with a known-good format
+      const baseGeoJSONData = {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "Polygon",
+              coordinates: [[
+                [-80, 27], [-80.1, 27], [-80.1, 27.1], [-80, 27.1], [-80, 27]
+              ]]
+            },
+            properties: {
+              id: "test-district",
+              name: "Test District"
+            }
+          }
+        ]
+      };
+      
+      // First create a test layer to see if basic Leaflet mapping works
+      console.log("Creating test GeoJSON layer");
+      const testLayer = L.geoJSON(baseGeoJSONData as any).addTo(mapInstance);
+      
+      // If successful, try with the real data
+      console.log("Test layer successful, trying with actual data");
+      testLayer.removeFrom(mapInstance);
+      
+      // Add logging to diagnose the issue
       console.log('GeoData structure:', {
         type: geoData.type,
         featuresCount: geoData.features?.length,
         sampleFeature: geoData.features?.[0]
       });
       
-      // Validate GeoJSON structure
-      if (!geoData.type || !geoData.features || !Array.isArray(geoData.features)) {
-        throw new Error('Invalid GeoJSON structure: missing type or features array');
-      }
-      
-      // Check for empty features
-      if (geoData.features.length === 0) {
-        throw new Error('GeoJSON contains no features');
-      }
-      
-      // Process GeoJSON to ensure it's compatible with Leaflet
-      const normalizedGeoJSON = {
-        type: 'FeatureCollection',
-        features: geoData.features.map(feature => {
-          // Make a deep copy to avoid modifying the original
-          const newFeature = JSON.parse(JSON.stringify(feature));
-          
-          // If coordinates are 3D (with altitude), convert to 2D
-          if (newFeature.geometry && newFeature.geometry.coordinates) {
-            const processCoordinates = (coords: any[]): any[] => {
+      // Extract important features to simplify
+      const simplifiedGeoJSON = {
+        type: "FeatureCollection",
+        features: geoData.features.map((feature: any) => ({
+          type: "Feature",
+          properties: feature.properties || {},
+          geometry: {
+            type: feature.geometry.type,
+            coordinates: feature.geometry.coordinates.map((coords: any) => {
               if (Array.isArray(coords[0])) {
-                // Array of coordinates
-                return coords.map(c => processCoordinates(c));
-              } else if (coords.length === 3) {
-                // Single coordinate with altitude - remove the altitude
-                return [coords[0], coords[1]];
+                return coords.map((c: any) => 
+                  Array.isArray(c[0]) 
+                    ? c.map((p: any) => [p[0], p[1]]) 
+                    : [c[0], c[1]]
+                );
               }
-              return coords;
-            };
-            
-            newFeature.geometry.coordinates = processCoordinates(newFeature.geometry.coordinates);
+              return [coords[0], coords[1]];
+            })
           }
-          
-          return newFeature;
-        })
+        }))
       };
       
-      // Create GeoJSON layer with more explicit error handling and normalized GeoJSON
-      const layer = L.geoJSON(normalizedGeoJSON, {
+      const layer = L.geoJSON(simplifiedGeoJSON as any, {
         style: style,
         onEachFeature: onEachFeature
       }).addTo(mapInstance);
