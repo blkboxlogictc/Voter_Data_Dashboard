@@ -151,6 +151,40 @@ export default function FileUpload({
       });
     }
   };
+  
+  // Handle loading sample data
+  const handleUseSampleData = async () => {
+    try {
+      // Create File objects from the sample data
+      const voterDataFile = new File(
+        [JSON.stringify(sampleVoterData)], 
+        'sample-voter-data.json', 
+        { type: 'application/json' }
+      );
+      
+      const geoDataFile = new File(
+        [JSON.stringify(sampleDistrictsData)], 
+        'sample-districts.json', 
+        { type: 'application/json' }
+      );
+      
+      // Upload the sample files
+      await onVoterDataUpload(voterDataFile);
+      await onGeoDataUpload(geoDataFile);
+      
+      toast({
+        title: "Sample data loaded",
+        description: "Sample voter and geographic data have been loaded. Click 'Process & Visualize' to continue.",
+      });
+      
+    } catch (error) {
+      toast({
+        title: "Error loading sample data",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <Card className="bg-white rounded-lg shadow mb-6">
@@ -245,7 +279,16 @@ export default function FileUpload({
           </div>
         </div>
         
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Button 
+            variant="outline"
+            className="border-primary text-primary hover:bg-primary/10 transition flex items-center"
+            onClick={handleUseSampleData}
+          >
+            <FileCode className="h-4 w-4 mr-2" />
+            <span>Use Sample Data</span>
+          </Button>
+          
           <Button 
             className="bg-primary text-white px-6 py-2 rounded font-medium flex items-center space-x-2 hover:bg-primary/90 transition"
             onClick={handleProcessClick}
