@@ -4,7 +4,6 @@ import { Download, Home, Layers, Grid, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DistrictType } from "@shared/schema";
 import L from "leaflet";
-import type { Feature, FeatureCollection, GeoJsonObject } from 'geojson';
 import "leaflet/dist/leaflet.css";
 
 interface GeographicMapProps {
@@ -65,10 +64,12 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
     
     // Function to get color based on value and selected layer
     const getColor = (feature: any) => {
+      if (!feature || !feature.properties) return '#CCCCCC';
+      
       const districtId = feature.properties.id || 
-                         feature.properties.PRECINCT || 
-                         feature.properties.DISTRICT_ID ||
-                         feature.properties.districtId;
+                       feature.properties.PRECINCT || 
+                       feature.properties.DISTRICT_ID ||
+                       feature.properties.districtId;
       
       const district = districtData[districtId];
       
@@ -141,14 +142,18 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
         fillOpacity: 0.9
       });
       
-      layer.bringToFront();
+      if (layer.bringToFront) {
+        layer.bringToFront();
+      }
       
       // Get district data for tooltip
+      if (!layer.feature || !layer.feature.properties) return;
+      
       const feature = layer.feature;
       const districtId = feature.properties.id || 
-                         feature.properties.PRECINCT || 
-                         feature.properties.DISTRICT_ID ||
-                         feature.properties.districtId;
+                       feature.properties.PRECINCT || 
+                       feature.properties.DISTRICT_ID ||
+                       feature.properties.districtId;
       
       const district = districtData[districtId];
       
@@ -174,7 +179,7 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
         // Position tooltip based on mouse position
         const rect = mapRef.current?.getBoundingClientRect();
         
-        if (rect) {
+        if (rect && e.originalEvent) {
           tooltipDiv.style.display = 'block';
           tooltipDiv.style.left = `${e.originalEvent.clientX + 15}px`;
           tooltipDiv.style.top = `${e.originalEvent.clientY + 15}px`;
@@ -184,7 +189,9 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
     
     // Function to handle mouseout event
     const resetHighlight = (e: L.LeafletEvent) => {
-      geoJsonLayer?.resetStyle(e.target);
+      if (geoJsonLayer && geoJsonLayer.resetStyle) {
+        geoJsonLayer.resetStyle(e.target);
+      }
       
       const tooltipDiv = document.getElementById('map-tooltip');
       if (tooltipDiv) {
@@ -194,7 +201,9 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
     
     // Function to handle click event
     const zoomToFeature = (e: L.LeafletEvent) => {
-      mapInstance.fitBounds(e.target.getBounds());
+      if (e.target && e.target.getBounds && mapInstance) {
+        mapInstance.fitBounds(e.target.getBounds());
+      }
     };
     
     // Function to bind events to each feature
@@ -206,90 +215,93 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
       });
     };
     
-    // Create GeoJSON layer with a simple approach
+    // Create GeoJSON layer
     try {
-      // Create a simple GeoJSON layer first with a known-good format
-      const baseGeoJSONData = {
-        type: "FeatureCollection",
-        features: [
-          {
-            type: "Feature",
-            geometry: {
-              type: "Polygon",
-              coordinates: [[
-                [-80, 27], [-80.1, 27], [-80.1, 27.1], [-80, 27.1], [-80, 27]
-              ]]
-            },
-            properties: {
-              id: "test-district",
-              name: "Test District"
-            }
-          }
-        ]
-      };
-      
-      // First create a test layer to see if basic Leaflet mapping works
+      // Test with a simple polygon first to verify Leaflet is working
       console.log("Creating test GeoJSON layer");
-      const testLayer = L.geoJSON(baseGeoJSONData as any).addTo(mapInstance);
+      const testLayer = L.geoJSON({
+        type: "FeatureCollection",
+        features: [{
+          type: "Feature",
+          properties: { id: "test" },
+          geometry: {
+            type: "Polygon",
+            coordinates: [[[-80, 25], [-80, 25.5], [-79.5, 25.5], [-79.5, 25], [-80, 25]]]
+          }
+        }]
+      } as any).addTo(mapInstance);
       
-      // If successful, try with the real data
-      console.log("Test layer successful, trying with actual data");
+      console.log("Test layer created successfully");
       testLayer.removeFrom(mapInstance);
       
-      // Add logging to diagnose the issue
-      console.log('GeoData structure:', {
-        type: geoData.type,
-        featuresCount: geoData.features?.length,
-        sampleFeature: geoData.features?.[0]
+      // Now try with the actual data
+      console.log('Processing actual GeoJSON data');
+      
+      // Sanitize the GeoJSON data to ensure it's compatible with Leaflet
+      // 1. First, ensure we properly handle 3D coordinates by converting to 2D
+      const sanitizedFeatures = geoData.features.map((feature: any) => {
+        const sanitizedFeature = { ...feature };
+        
+        const processCoordinates = (coords: any[]): any[] => {
+          if (Array.isArray(coords[0])) {
+            return coords.map(c => processCoordinates(c));
+          } else if (coords.length > 2) {
+            // If it's a coordinate with more than 2 values (e.g., [lon, lat, alt]),
+            // take only the first two (longitude, latitude)
+            return [coords[0], coords[1]];
+          }
+          return coords;
+        };
+        
+        if (
+          sanitizedFeature.geometry && 
+          sanitizedFeature.geometry.coordinates &&
+          Array.isArray(sanitizedFeature.geometry.coordinates)
+        ) {
+          sanitizedFeature.geometry.coordinates = processCoordinates(sanitizedFeature.geometry.coordinates);
+        }
+        
+        return sanitizedFeature;
       });
       
-      // Extract important features to simplify
-      const simplifiedGeoJSON = {
+      console.log('Created sanitized features');
+      
+      // Create a new GeoJSON object with the sanitized features
+      const sanitizedGeoJSON = {
         type: "FeatureCollection",
-        features: geoData.features.map((feature: any) => ({
-          type: "Feature",
-          properties: feature.properties || {},
-          geometry: {
-            type: feature.geometry.type,
-            coordinates: feature.geometry.coordinates.map((coords: any) => {
-              if (Array.isArray(coords[0])) {
-                return coords.map((c: any) => 
-                  Array.isArray(c[0]) 
-                    ? c.map((p: any) => [p[0], p[1]]) 
-                    : [c[0], c[1]]
-                );
-              }
-              return [coords[0], coords[1]];
-            })
-          }
-        }))
+        features: sanitizedFeatures
       };
       
-      const layer = L.geoJSON(simplifiedGeoJSON as any, {
+      // Create the Leaflet GeoJSON layer
+      console.log('Creating Leaflet GeoJSON layer');
+      const layer = L.geoJSON(sanitizedGeoJSON as any, {
         style: style,
         onEachFeature: onEachFeature
       }).addTo(mapInstance);
       
+      console.log('GeoJSON layer created successfully');
       setGeoJsonLayer(layer);
       
-      // Fit map to GeoJSON bounds
-      mapInstance.fitBounds(layer.getBounds());
+      // Fit the map to the bounds of the GeoJSON layer
+      if (layer.getBounds) {
+        mapInstance.fitBounds(layer.getBounds());
+      }
     } catch (error) {
       console.error('Error creating GeoJSON layer:', error);
       toast({
         title: 'Map Error',
-        description: `Failed to render the geographic map: ${error instanceof Error ? error.message : 'Invalid GeoJSON format'}. Please check your GeoJSON data.`,
+        description: `Failed to render the geographic map: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your GeoJSON data.`,
         variant: 'destructive'
       });
     }
-  }, [geoData, districtData, districtType, mapInstance, mapLayer, toast]);
+  }, [geoData, districtData, districtType, mapInstance, mapLayer, toast, geoJsonLayer]);
 
   const handleMapLayerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setMapLayer(e.target.value as 'density' | 'turnout' | 'party' | 'race');
   };
 
   const handleResetMapView = () => {
-    if (mapInstance && geoJsonLayer) {
+    if (mapInstance && geoJsonLayer && geoJsonLayer.getBounds) {
       mapInstance.fitBounds(geoJsonLayer.getBounds());
     }
   };
@@ -302,7 +314,7 @@ export default function GeographicMap({ geoData, districtData, districtType }: G
   };
 
   const handleShowAllDistricts = () => {
-    if (mapInstance && geoJsonLayer) {
+    if (mapInstance && geoJsonLayer && geoJsonLayer.getBounds) {
       mapInstance.fitBounds(geoJsonLayer.getBounds());
     }
   };
