@@ -1,0 +1,81 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "D1",
+        "name": "District 1"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-75.1, 39.9],
+            [-75.1, 40.1],
+            [-74.9, 40.1],
+            [-74.9, 39.9],
+            [-75.1, 39.9]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "D2",
+        "name": "District 2"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-75.3, 39.9],
+            [-75.3, 40.1],
+            [-75.1, 40.1],
+            [-75.1, 39.9],
+            [-75.3, 39.9]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "D3",
+        "name": "District 3"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-75.3, 39.7],
+            [-75.3, 39.9],
+            [-75.1, 39.9],
+            [-75.1, 39.7],
+            [-75.3, 39.7]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "D4",
+        "name": "District 4"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-75.1, 39.7],
+            [-75.1, 39.9],
+            [-74.9, 39.9],
+            [-74.9, 39.7],
+            [-75.1, 39.7]
+          ]
+        ]
+      }
+    }
+  ]
+}

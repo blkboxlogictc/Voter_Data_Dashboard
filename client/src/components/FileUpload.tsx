@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Check, UploadCloud, Database, Globe2 } from "lucide-react";
+import { AlertCircle, Check, UploadCloud, Database, Globe2, FileCode } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import sampleVoterData from "@/assets/sample-voter-data.json";
+import sampleDistrictsData from "@/assets/sample-districts.json";
 
 type FileData = {
   name: string;

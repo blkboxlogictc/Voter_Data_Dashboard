@@ -5,7 +5,7 @@ import PartyAffiliationChart from "@/components/charts/PartyAffiliationChart";
 import AgeGroupTurnoutChart from "@/components/charts/AgeGroupTurnoutChart";
 import RacialDemographicsChart from "@/components/charts/RacialDemographicsChart";
 import TurnoutTrendChart from "@/components/charts/TurnoutTrendChart";
-import GeographicMap from "@/components/GeographicMap";
+import MapboxMap from "@/components/MapboxMap";
 import LoadingState from "@/components/LoadingState";
 import ErrorState from "@/components/ErrorState";
 import { useToast } from "@/hooks/use-toast";
@@ -138,7 +138,7 @@ export default function Dashboard() {
               <TurnoutTrendChart data={processedData.turnoutTrends} />
             </div>
             
-            <GeographicMap 
+            <MapboxMap 
               geoData={geoFile && geoFile.isValid ? JSON.parse(geoFile.content) : null}
               districtData={processedData.districtData}
               districtType={districtType}

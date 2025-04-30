@@ -1,0 +1,100 @@
+{
+  "voters": [
+    {
+      "id": 1,
+      "precinct": "D1",
+      "age": 35,
+      "party": "Democratic",
+      "voted": true,
+      "race": "White"
+    },
+    {
+      "id": 2,
+      "precinct": "D1",
+      "age": 25,
+      "party": "Republican",
+      "voted": false,
+      "race": "Asian"
+    },
+    {
+      "id": 3,
+      "precinct": "D1",
+      "age": 45,
+      "party": "Democratic",
+      "voted": true,
+      "race": "Black"
+    },
+    {
+      "id": 4,
+      "precinct": "D2",
+      "age": 55,
+      "party": "Republican",
+      "voted": true,
+      "race": "White"
+    },
+    {
+      "id": 5,
+      "precinct": "D2",
+      "age": 20,
+      "party": "Republican",
+      "voted": false,
+      "race": "White"
+    },
+    {
+      "id": 6,
+      "precinct": "D2",
+      "age": 65,
+      "party": "Republican",
+      "voted": true,
+      "race": "White"
+    },
+    {
+      "id": 7,
+      "precinct": "D3",
+      "age": 30,
+      "party": "Democratic",
+      "voted": true,
+      "race": "Hispanic"
+    },
+    {
+      "id": 8,
+      "precinct": "D3",
+      "age": 40,
+      "party": "Democratic",
+      "voted": true,
+      "race": "Black"
+    },
+    {
+      "id": 9,
+      "precinct": "D3",
+      "age": 50,
+      "party": "Green",
+      "voted": false,
+      "race": "Asian"
+    },
+    {
+      "id": 10,
+      "precinct": "D4",
+      "age": 28,
+      "party": "Democratic",
+      "voted": true,
+      "race": "Hispanic"
+    },
+    {
+      "id": 11,
+      "precinct": "D4",
+      "age": 33,
+      "party": "Libertarian",
+      "voted": true,
+      "race": "White"
+    },
+    {
+      "id": 12,
+      "precinct": "D4",
+      "age": 42,
+      "party": "Independent",
+      "voted": false,
+      "race": "Multiracial"
+    }
+  ]
+}
