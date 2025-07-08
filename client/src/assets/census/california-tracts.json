@@ -1,0 +1,120 @@
+{
+  "type": "FeatureCollection",
+  "name": "California Census Tracts 2023",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "GEOID": "06037001001",
+        "NAME": "Census Tract 10.01",
+        "STATEFP": "06",
+        "COUNTYFP": "037",
+        "TRACTCE": "001001",
+        "NAMELSAD": "Census Tract 10.01",
+        "MTFCC": "G5020",
+        "FUNCSTAT": "S",
+        "ALAND": 1234567,
+        "AWATER": 12345,
+        "INTPTLAT": "+34.0522265",
+        "INTPTLON": "-118.2436596"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-118.2600, 34.0400],
+          [-118.2300, 34.0400],
+          [-118.2300, 34.0600],
+          [-118.2600, 34.0600],
+          [-118.2600, 34.0400]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "GEOID": "06037001002",
+        "NAME": "Census Tract 10.02",
+        "STATEFP": "06",
+        "COUNTYFP": "037",
+        "TRACTCE": "001002",
+        "NAMELSAD": "Census Tract 10.02",
+        "MTFCC": "G5020",
+        "FUNCSTAT": "S",
+        "ALAND": 2345678,
+        "AWATER": 23456,
+        "INTPTLAT": "+34.0722265",
+        "INTPTLON": "-118.2236596"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-118.2300, 34.0600],
+          [-118.2000, 34.0600],
+          [-118.2000, 34.0800],
+          [-118.2300, 34.0800],
+          [-118.2300, 34.0600]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "GEOID": "06075001001",
+        "NAME": "Census Tract 10.01",
+        "STATEFP": "06",
+        "COUNTYFP": "075",
+        "TRACTCE": "001001",
+        "NAMELSAD": "Census Tract 10.01",
+        "MTFCC": "G5020",
+        "FUNCSTAT": "S",
+        "ALAND": 3456789,
+        "AWATER": 34567,
+        "INTPTLAT": "+37.7749295",
+        "INTPTLON": "-122.4194155"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-122.4400, 37.7600],
+          [-122.4100, 37.7600],
+          [-122.4100, 37.7800],
+          [-122.4400, 37.7800],
+          [-122.4400, 37.7600]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "GEOID": "06075001002",
+        "NAME": "Census Tract 10.02",
+        "STATEFP": "06",
+        "COUNTYFP": "075",
+        "TRACTCE": "001002",
+        "NAMELSAD": "Census Tract 10.02",
+        "MTFCC": "G5020",
+        "FUNCSTAT": "S",
+        "ALAND": 4567890,
+        "AWATER": 45678,
+        "INTPTLAT": "+37.7949295",
+        "INTPTLON": "-122.3994155"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-122.4100, 37.7800],
+          [-122.3800, 37.7800],
+          [-122.3800, 37.8000],
+          [-122.4100, 37.8000],
+          [-122.4100, 37.7800]
+        ]]
+      }
+    }
+  ]
+}

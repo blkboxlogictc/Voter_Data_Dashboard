@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, ProcessedVoterData, SummaryStatistic } from "@shared/schema";
+import { users, type User, type InsertUser, ProcessedVoterData, SummaryStatistic, DistrictType } from "@shared/schema";
 
 export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
@@ -40,9 +40,16 @@ export class MemStorage implements IStorage {
       // Process the voter data and generate statistics
       let processedData: ProcessedVoterData;
       
+      // Check if data is in the expected format with voters array
       if (voterData?.voters && Array.isArray(voterData.voters)) {
         // If we have actual voter data in the expected format, process it
         processedData = this.generateStatsFromVoterData(voterData, geoData);
+      }
+      // Check if data is an array of voter objects (like csvjson format)
+      else if (Array.isArray(voterData)) {
+        // Convert to expected format with voters array
+        const formattedData = { voters: voterData };
+        processedData = this.generateStatsFromVoterData(formattedData, geoData);
       } else {
         // Otherwise, provide default sample data
         processedData = this.getDefaultSampleData(geoData);
@@ -70,7 +77,17 @@ export class MemStorage implements IStorage {
       // 1. Calculate party affiliation
       const partyCount: Record<string, number> = {};
       voters.forEach((voter: any) => {
-        const party = voter.party || 'Unknown';
+        // The Party field is uppercase in the example data
+        let party = voter.Party || 'Unknown';
+        
+        // Convert single letter party codes to full names
+        if (party === 'R') party = 'Republican';
+        else if (party === 'D') party = 'Democratic';
+        else if (party === 'L') party = 'Libertarian';
+        else if (party === 'G') party = 'Green';
+        else if (party === 'I') party = 'Independent';
+        else if (party === 'NP') party = 'No Party';
+        
         partyCount[party] = (partyCount[party] || 0) + 1;
       });
       
@@ -81,8 +98,14 @@ export class MemStorage implements IStorage {
       const notVotedByAge: number[] = Array(ageGroups.length).fill(0);
       
       voters.forEach((voter: any) => {
-        const age = voter.age || 0;
-        const voted = voter.voted || false;
+        // The Age field is uppercase in the example data
+        const age = voter.Age || 0;
+        
+        // The Voted field is uppercase in the example data and uses 1/0
+        let voted = false;
+        if (voter.Voted !== undefined) {
+          voted = voter.Voted === 1 || voter.Voted === true;
+        }
         
         for (let i = 0; i < ageRanges.length; i++) {
           const [min, max] = ageRanges[i];
@@ -100,7 +123,18 @@ export class MemStorage implements IStorage {
       // 3. Calculate racial demographics
       const raceCount: Record<string, number> = {};
       voters.forEach((voter: any) => {
-        const race = voter.race || 'Unknown';
+        // The Race field is uppercase in the example data
+        let race = voter.Race || 'Unknown';
+        
+        // Standardize race categories to match the specified categories
+        if (race.toLowerCase().includes('white')) race = 'White';
+        else if (race.toLowerCase().includes('black')) race = 'Black';
+        else if (race.toLowerCase().includes('hispanic') || race.toLowerCase().includes('latino')) race = 'Hispanic';
+        else if (race.toLowerCase().includes('asian')) race = 'Asian';
+        else if (race.toLowerCase().includes('native')) race = 'Native';
+        else if (race.toLowerCase().includes('multi')) race = 'Multiracial';
+        else race = 'Unknown';
+        
         raceCount[race] = (raceCount[race] || 0) + 1;
       });
       
@@ -116,7 +150,16 @@ export class MemStorage implements IStorage {
       
       // Calculate current turnout rate
       const totalVoters = voters.length;
-      const votedCount = voters.filter((v: any) => v.voted).length;
+      
+      // Handle both boolean and numeric (1/0) voted values
+      const votedCount = voters.filter((v: any) => {
+        // The Voted field is uppercase in the example data and uses 1/0
+        if (v.Voted !== undefined) {
+          return v.Voted === 1 || v.Voted === true;
+        }
+        return false;
+      }).length;
+      
       const currentTurnout = totalVoters > 0 ? votedCount / totalVoters : 0;
       
       // Simulate historical turnout with some random variation
@@ -141,24 +184,59 @@ export class MemStorage implements IStorage {
       });
       
       // For each district, calculate statistics
+      // Add a variable to track the district type (default to precinct)
+      const districtType: DistrictType = 'precinct'; // This should ideally be passed as a parameter
+      
       districts.forEach(districtId => {
-        const districtVoters = voters.filter((v: any) => v.precinct === districtId);
+        // Handle different district field names based on the district type
+        const districtVoters = voters.filter((v: any) => {
+          // Check for precinct match (Precinct is uppercase in the example data)
+          if (v.Precinct !== undefined && v.Precinct.toString() === districtId) return true;
+          
+          // Check for CD (Congressional District) match
+          if (districtType === 'congressional' as DistrictType && v.CD && v.CD.toString() === districtId) return true;
+          
+          // Check for SD (State Senate District) match
+          if (districtType === 'stateSenate' as DistrictType && v.SD && v.SD.toString() === districtId) return true;
+          
+          // Check for HD (State House District) match
+          if (districtType === 'stateHouse' as DistrictType && v.HD && v.HD.toString() === districtId) return true;
+          
+          return false;
+        });
+        
         const districtVoterCount = districtVoters.length;
         
         if (districtVoterCount === 0) return;
         
-        // Calculate turnout
-        const districtVotedCount = districtVoters.filter((v: any) => v.voted).length;
+        // Calculate turnout - handle both boolean and numeric (1/0) voted values
+        const districtVotedCount = districtVoters.filter((v: any) => {
+          // The Voted field is uppercase in the example data and uses 1/0
+          if (v.Voted !== undefined) {
+            return v.Voted === 1 || v.Voted === true;
+          }
+          return false;
+        }).length;
+        
         const turnout = districtVotedCount / districtVoterCount;
         
-        // Calculate average age
-        const totalAge = districtVoters.reduce((sum: number, v: any) => sum + (v.age || 0), 0);
+        // Calculate average age - Age is uppercase in the example data
+        const totalAge = districtVoters.reduce((sum: number, v: any) => sum + (v.Age || 0), 0);
         const averageAge = totalAge / districtVoterCount;
         
         // Determine majority party
         const partyDistribution: Record<string, number> = {};
         districtVoters.forEach((v: any) => {
-          const party = v.party || 'Unknown';
+          // The Party field is uppercase in the example data
+          let party = v.Party || 'Unknown';
+          
+          // Convert single letter party codes to full names
+          if (party === 'R') party = 'Republican';
+          else if (party === 'D') party = 'Democratic';
+          else if (party === 'L') party = 'Libertarian';
+          else if (party === 'G') party = 'Green';
+          else if (party === 'I') party = 'Independent';
+          
           partyDistribution[party] = (partyDistribution[party] || 0) + 1;
         });
         const majorityParty = Object.entries(partyDistribution)
@@ -167,7 +245,18 @@ export class MemStorage implements IStorage {
         // Determine majority race
         const raceDistribution: Record<string, number> = {};
         districtVoters.forEach((v: any) => {
-          const race = v.race || 'Unknown';
+          // The Race field is uppercase in the example data
+          let race = v.Race || 'Unknown';
+          
+          // Standardize race categories to match the specified categories
+          if (race.toLowerCase().includes('white')) race = 'White';
+          else if (race.toLowerCase().includes('black')) race = 'Black';
+          else if (race.toLowerCase().includes('hispanic') || race.toLowerCase().includes('latino')) race = 'Hispanic';
+          else if (race.toLowerCase().includes('asian')) race = 'Asian';
+          else if (race.toLowerCase().includes('native')) race = 'Native';
+          else if (race.toLowerCase().includes('multi')) race = 'Multiracial';
+          else race = 'Unknown';
+          
           raceDistribution[race] = (raceDistribution[race] || 0) + 1;
         });
         const majorityRace = Object.entries(raceDistribution)
@@ -191,9 +280,115 @@ export class MemStorage implements IStorage {
       const registeredVoters = voters.length;
       const overallTurnout = votedCount / registeredVoters;
       
-      // Calculate average age
-      const totalAge = voters.reduce((sum: number, v: any) => sum + (v.age || 0), 0);
+      // Calculate average age - Age is uppercase in the example data
+      const totalAge = voters.reduce((sum: number, v: any) => sum + (v.Age || 0), 0);
       const avgAge = totalAge / registeredVoters;
+      
+      // Extract all unique precincts from the voter data
+      const allPrecincts = new Set<string>();
+      
+      // Log a sample voter for debugging
+      if (voters.length > 0) {
+        console.log("Sample voter object:", JSON.stringify(voters[0], null, 2));
+      }
+      
+      voters.forEach((voter: any) => {
+        // The Precinct field is uppercase in the example data
+        // Handle both numeric and string precinct values
+        const precinct = voter.Precinct;
+        if (precinct !== undefined) {
+          allPrecincts.add(precinct.toString());
+        }
+      });
+      
+      console.log("Found precincts:", Array.from(allPrecincts));
+      
+      const precinctIds = Array.from(allPrecincts).sort((a, b) => {
+        // Sort numerically if possible
+        const numA = parseInt(a);
+        const numB = parseInt(b);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        return a.localeCompare(b);
+      });
+      
+      // Create precinct demographics data structure with direct processing from voter records
+      const precinctDemographics = {
+        precincts: precinctIds,
+        registeredVoters: {} as Record<string, number>,
+        turnoutPercentage: {} as Record<string, number>,
+        partyAffiliation: {} as Record<string, Record<string, number>>,
+        racialDemographics: {} as Record<string, Record<string, number>>
+      };
+      
+      // Process each precinct
+      precinctIds.forEach(precinctId => {
+        // Get all voters in this precinct
+        const precinctVoters = voters.filter((voter: any) => {
+          // The Precinct field is uppercase in the example data
+          const voterPrecinct = voter.Precinct;
+          // Handle both numeric and string precinct values
+          return voterPrecinct !== undefined && voterPrecinct.toString() === precinctId;
+        });
+        
+        console.log(`Voters in precinct ${precinctId}:`, precinctVoters.length);
+        
+        // Count total registered voters in this precinct
+        precinctDemographics.registeredVoters[precinctId] = precinctVoters.length;
+        
+        // Calculate turnout percentage
+        const votedCount = precinctVoters.filter((voter: any) => {
+          if (voter.voted !== undefined) {
+            return !!voter.voted;
+          } else if (voter.Voted !== undefined) {
+            return voter.Voted === 1 || voter.Voted === true;
+          }
+          return false;
+        }).length;
+        
+        const turnoutPercentage = precinctVoters.length > 0
+          ? Math.round((votedCount / precinctVoters.length) * 100)
+          : 0;
+        
+        precinctDemographics.turnoutPercentage[precinctId] = turnoutPercentage;
+        
+        // Calculate party affiliation breakdown
+        const partyBreakdown: Record<string, number> = {};
+        
+        precinctVoters.forEach((voter: any) => {
+          // The Party field is uppercase in the example data
+          const party = voter.Party || 'Unknown';
+          partyBreakdown[party] = (partyBreakdown[party] || 0) + 1;
+        });
+        
+        precinctDemographics.partyAffiliation[precinctId] = partyBreakdown;
+        
+        // Calculate racial demographics breakdown
+        const racialBreakdown: Record<string, number> = {};
+        
+        precinctVoters.forEach((voter: any) => {
+          // The Race field is uppercase in the example data
+          let race = voter.Race || 'Unknown';
+          
+          // Standardize race categories to match the specified categories
+          if (race.toLowerCase().includes('white')) race = 'White';
+          else if (race.toLowerCase().includes('black')) race = 'Black';
+          else if (race.toLowerCase().includes('hispanic') || race.toLowerCase().includes('latino')) race = 'Hispanic';
+          else if (race.toLowerCase().includes('asian')) race = 'Asian';
+          else if (race.toLowerCase().includes('native')) race = 'Native';
+          else if (race.toLowerCase().includes('multi')) race = 'Multiracial';
+          else race = 'Unknown';
+          
+          racialBreakdown[race] = (racialBreakdown[race] || 0) + 1;
+        });
+        
+        precinctDemographics.racialDemographics[precinctId] = racialBreakdown;
+      });
+
+      // Log the precinct demographics data for debugging
+      console.log("Precinct IDs:", precinctIds);
+      console.log("Precinct Demographics:", JSON.stringify(precinctDemographics, null, 2));
       
       return {
         partyAffiliation: partyCount,
@@ -207,6 +402,7 @@ export class MemStorage implements IStorage {
           years,
           turnout: turnoutTrend
         },
+        precinctDemographics,
         summaryStats: [
           {
             label: 'Registered Voters',
@@ -273,10 +469,53 @@ export class MemStorage implements IStorage {
         years: ['2008', '2012', '2016', '2020', '2024'],
         turnout: [62, 58, 65, 67, 71]
       },
+      precinctDemographics: {
+        precincts: ['1', '2', '3', '4', '5', '6', '7', '8'],
+        registeredVoters: {
+          '1': 12545,
+          '2': 9876,
+          '3': 11234,
+          '4': 10567,
+          '5': 8765,
+          '6': 7654,
+          '7': 9123,
+          '8': 8432
+        },
+        turnoutPercentage: {
+          '1': 73,
+          '2': 68,
+          '3': 81,
+          '4': 62,
+          '5': 75,
+          '6': 70,
+          '7': 65,
+          '8': 78
+        },
+        partyAffiliation: {
+          '1': { 'R': 6500, 'D': 4000, 'NP': 2045 },
+          '2': { 'R': 5500, 'D': 3000, 'NP': 1376 },
+          '3': { 'D': 7000, 'R': 2500, 'NP': 1734 },
+          '4': { 'R': 5000, 'D': 3000, 'NP': 2567 },
+          '5': { 'D': 4500, 'R': 3000, 'NP': 1265 },
+          '6': { 'R': 4000, 'D': 2500, 'NP': 1154 },
+          '7': { 'D': 5000, 'R': 3000, 'NP': 1123 },
+          '8': { 'R': 4500, 'D': 2500, 'NP': 1432 }
+        },
+        racialDemographics: {
+          '1': { 'White': 8500, 'Black': 1500, 'Hispanic': 1200, 'Asian': 800, 'Native': 300, 'Multiracial': 245 },
+          '2': { 'White': 7200, 'Black': 1000, 'Hispanic': 800, 'Asian': 500, 'Native': 200, 'Multiracial': 176 },
+          '3': { 'White': 3500, 'Black': 5000, 'Hispanic': 1500, 'Asian': 800, 'Native': 200, 'Multiracial': 234 },
+          '4': { 'White': 4500, 'Black': 1500, 'Hispanic': 1000, 'Asian': 3000, 'Native': 300, 'Multiracial': 267 },
+          '5': { 'White': 5000, 'Black': 1800, 'Hispanic': 1200, 'Asian': 500, 'Native': 100, 'Multiracial': 165 },
+          '6': { 'White': 5500, 'Black': 800, 'Hispanic': 700, 'Asian': 400, 'Native': 100, 'Multiracial': 154 },
+          '7': { 'White': 2500, 'Black': 1800, 'Hispanic': 3500, 'Asian': 900, 'Native': 200, 'Multiracial': 223 },
+          '8': { 'White': 6000, 'Black': 1000, 'Hispanic': 800, 'Asian': 400, 'Native': 100, 'Multiracial': 132 }
+        }
+      },
       summaryStats: [
         {
           label: 'Registered Voters',
-          value: '145,350',
+          value: '12', // Count each JSON object as one voter (sample data has 12 voters)
           trend: '+2.3%',
           icon: 'users',
           trendDirection: 'up'
@@ -304,15 +543,15 @@ export class MemStorage implements IStorage {
         }
       ],
       districtData: {
-        'D1': {
+        '1': {
           registeredVoters: 12545,
           turnout: 0.73,
-          majorityParty: 'Democratic',
+          majorityParty: 'Republican',
           voterDensity: 0.82,
           averageAge: 38.5,
           majorityRace: 'White'
         },
-        'D2': {
+        '2': {
           registeredVoters: 9876,
           turnout: 0.68,
           majorityParty: 'Republican',
@@ -320,7 +559,7 @@ export class MemStorage implements IStorage {
           averageAge: 45.2,
           majorityRace: 'White'
         },
-        'D3': {
+        '3': {
           registeredVoters: 11234,
           turnout: 0.81,
           majorityParty: 'Democratic',
@@ -328,13 +567,45 @@ export class MemStorage implements IStorage {
           averageAge: 36.7,
           majorityRace: 'Black'
         },
-        'D4': {
+        '4': {
           registeredVoters: 10567,
           turnout: 0.62,
-          majorityParty: 'Libertarian',
+          majorityParty: 'Republican',
           voterDensity: 0.45,
           averageAge: 52.3,
           majorityRace: 'Asian'
+        },
+        '5': {
+          registeredVoters: 8765,
+          turnout: 0.75,
+          majorityParty: 'Democratic',
+          voterDensity: 0.78,
+          averageAge: 41.2,
+          majorityRace: 'White'
+        },
+        '6': {
+          registeredVoters: 7654,
+          turnout: 0.70,
+          majorityParty: 'Republican',
+          voterDensity: 0.65,
+          averageAge: 48.7,
+          majorityRace: 'White'
+        },
+        '7': {
+          registeredVoters: 9123,
+          turnout: 0.65,
+          majorityParty: 'Democratic',
+          voterDensity: 0.72,
+          averageAge: 39.5,
+          majorityRace: 'Hispanic'
+        },
+        '8': {
+          registeredVoters: 8432,
+          turnout: 0.78,
+          majorityParty: 'Republican',
+          voterDensity: 0.68,
+          averageAge: 44.8,
+          majorityRace: 'White'
         }
       }
     };

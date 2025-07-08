@@ -1,0 +1,49 @@
+[build]
+  command = "npm run build"
+  publish = "dist/public"
+  functions = "netlify/functions"
+
+[dev]
+  command = "npm run dev"
+  port = 5000
+  targetPort = 5000
+
+# Function settings
+[functions]
+  # Increase the function timeout to 60 seconds
+  node_bundler = "esbuild"
+  external_node_modules = ["@shared/schema"]
+
+# Increase the size limit for the process-data function
+[functions.process-data]
+  included_files = ["shared/schema.ts"]
+
+# Background function for large data processing
+[functions.process-data-background]
+  included_files = ["shared/schema.ts"]
+
+# Chunked upload function
+[functions.upload-chunk]
+  included_files = ["shared/schema.ts"]
+
+# Redirect all API requests to Netlify Functions
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+# Handle client-side routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Set headers for better security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://*.netlify.app"

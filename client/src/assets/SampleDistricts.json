@@ -1,0 +1,85 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "18",
+        "name": "Precinct 18",
+        "type": "precinct"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.2, 27.1],
+            [-80.2, 27.2],
+            [-80.1, 27.2],
+            [-80.1, 27.1],
+            [-80.2, 27.1]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "21",
+        "name": "Congressional District 21",
+        "type": "congressional"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.3, 27.0],
+            [-80.3, 27.3],
+            [-80.0, 27.3],
+            [-80.0, 27.0],
+            [-80.3, 27.0]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "31",
+        "name": "State Senate District 31",
+        "type": "stateSenate"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.25, 27.05],
+            [-80.25, 27.25],
+            [-80.05, 27.25],
+            [-80.05, 27.05],
+            [-80.25, 27.05]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "86",
+        "name": "State House District 86",
+        "type": "stateHouse"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-80.22, 27.08],
+            [-80.22, 27.22],
+            [-80.08, 27.22],
+            [-80.08, 27.08],
+            [-80.22, 27.08]
+          ]
+        ]
+      }
+    }
+  ]
+}

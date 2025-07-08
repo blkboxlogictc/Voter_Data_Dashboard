@@ -60,6 +60,28 @@ export type SummaryStatistic = {
   trendDirection?: 'up' | 'down' | 'stable';
 };
 
+export type CensusData = {
+  totalPopulation: number;
+  votingAgePopulation: number;
+  raceDistribution: Record<string, number>;
+  hispanicOrigin: {
+    hispanic: number;
+    nonHispanic: number;
+  };
+  medianIncome: number;
+  educationLevels: {
+    lessThanHighSchool: number;
+    highSchool: number;
+    someCollege: number;
+    bachelors: number;
+    graduate: number;
+  };
+  housingUnits: number;
+  homeownershipRate: number;
+  geoid: string;
+  geoName: string;
+};
+
 export type ProcessedVoterData = {
   partyAffiliation: Record<string, number>;
   ageGroupTurnout: {
@@ -72,6 +94,35 @@ export type ProcessedVoterData = {
     years: string[];
     turnout: number[];
   };
+  precinctDemographics: {
+    precincts: string[];
+    registeredVoters: Record<string, number>;
+    turnoutPercentage: Record<string, number>;
+    partyAffiliation: Record<string, Record<string, number>>;
+    racialDemographics: Record<string, Record<string, number>>;
+  };
   summaryStats: SummaryStatistic[];
   districtData: Record<string, any>;
+  
+  // Census data integration
+  censusData?: {
+    countyLevel?: CensusData;
+    byPrecinct?: Record<string, CensusData>;
+    unregisteredVoters?: Record<string, number>;
+    registrationRate?: Record<string, number>;
+    socioeconomicCorrelations?: {
+      incomeVsTurnout?: {
+        precincts: string[];
+        income: number[];
+        turnout: number[];
+        correlation: number;
+      };
+      educationVsTurnout?: {
+        precincts: string[];
+        education: number[];
+        turnout: number[];
+        correlation: number;
+      };
+    };
+  };
 };
