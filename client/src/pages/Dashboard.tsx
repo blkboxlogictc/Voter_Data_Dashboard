@@ -211,7 +211,11 @@ export default function Dashboard() {
               geoData={
                 geoFile && geoFile.isValid ? JSON.parse(geoFile.content) : null
               }
-              districtData={processedData.districtData}
+              districtData={{
+                ...processedData.districtData,
+                precinctDemographics: processedData.precinctDemographics,
+                rawVoterData: voterFile ? JSON.parse(voterFile.content) : null,
+              }}
               districtType={districtType}
             />
           </div>

@@ -130,12 +130,16 @@ export class SimpleChunkedProcessor {
     }
 
     // Merge age group turnout data
-    if (chunk.ageGroupTurnout) {
+    if (chunk.ageGroupTurnout && base.ageGroupTurnout) {
       chunk.ageGroupTurnout.voted.forEach((count: number, index: number) => {
-        base.ageGroupTurnout.voted[index] = (base.ageGroupTurnout.voted[index] || 0) + count;
+        if (base.ageGroupTurnout.voted[index] !== undefined) {
+          base.ageGroupTurnout.voted[index] += count;
+        }
       });
       chunk.ageGroupTurnout.notVoted.forEach((count: number, index: number) => {
-        base.ageGroupTurnout.notVoted[index] = (base.ageGroupTurnout.notVoted[index] || 0) + count;
+        if (base.ageGroupTurnout.notVoted[index] !== undefined) {
+          base.ageGroupTurnout.notVoted[index] += count;
+        }
       });
     }
 

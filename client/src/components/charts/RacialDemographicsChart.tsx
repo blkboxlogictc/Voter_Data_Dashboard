@@ -110,16 +110,37 @@ export default function RacialDemographicsChart({
 
           // Count voters by race and voted status
           rawVoterData.forEach((voter: any) => {
-            const race = voter.Race;
+            let race = voter.Race || "Unknown";
+
+            // Standardize race categories to match the processed data
+            if (race.toLowerCase().includes("white")) race = "White";
+            else if (race.toLowerCase().includes("black")) race = "Black";
+            else if (
+              race.toLowerCase().includes("hispanic") ||
+              race.toLowerCase().includes("latino")
+            )
+              race = "Hispanic";
+            else if (race.toLowerCase().includes("asian")) race = "Asian";
+            else if (race.toLowerCase().includes("native")) race = "Native";
+            else if (race.toLowerCase().includes("multi")) race = "Multiracial";
+            else race = "Unknown";
 
             // If this race is in our labels, count it
             if (raceVotedCounts[race] !== undefined) {
               raceTotalCounts[race]++;
 
               // Check if the voter voted (Voted field is 1 for voted, 0 for not voted)
-              if (voter.Voted === 1) {
+              if (
+                voter.Voted === 1 ||
+                voter.Voted === true ||
+                voter.Voted === "1"
+              ) {
                 raceVotedCounts[race]++;
-              } else if (voter.Voted === 0) {
+              } else if (
+                voter.Voted === 0 ||
+                voter.Voted === false ||
+                voter.Voted === "0"
+              ) {
                 raceNotVotedCounts[race]++;
               }
             }

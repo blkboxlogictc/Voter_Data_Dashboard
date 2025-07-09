@@ -13,8 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { DistrictType } from "@shared/schema";
 import { MapPin, Layers, Grid, Download, Home } from "lucide-react";
 import L from "leaflet";
-// Import sample voter data directly
-import sampleVoterData from "@/assets/SampleVoterData.json";
+// Remove hardcoded sample data import - we'll use actual processed data
 
 // Fix Leaflet default icon issues
 import icon from "leaflet/dist/images/marker-icon.png";
@@ -375,69 +374,8 @@ export default function GeographicMap({
           console.log("Racial demographics found in precinctDemographics");
         } else {
           console.log(
-            "No racial demographics found in precinctDemographics, using imported sample data"
+            "No racial demographics found in precinctDemographics, will calculate from raw voter data"
           );
-
-          // Use the imported sampleVoterData
-          console.log(
-            "Using imported SampleVoterData:",
-            sampleVoterData.length,
-            "voters"
-          );
-
-          // Process the voter data to get racial demographics by precinct
-          const racialDemographicsByPrecinct: Record<
-            string,
-            Record<string, number>
-          > = {};
-
-          sampleVoterData.forEach((voter: any) => {
-            const precinct = String(voter.Precinct);
-            const race = voter.Race || "Unknown";
-
-            if (!racialDemographicsByPrecinct[precinct]) {
-              racialDemographicsByPrecinct[precinct] = {};
-            }
-
-            racialDemographicsByPrecinct[precinct][race] =
-              (racialDemographicsByPrecinct[precinct][race] || 0) + 1;
-          });
-
-          console.log(
-            "Calculated racial demographics by precinct:",
-            racialDemographicsByPrecinct
-          );
-
-          // Update the normalizedData with the calculated racial demographics
-          const updatedNormalizedData = { ...normalizedData };
-
-          Object.entries(racialDemographicsByPrecinct).forEach(
-            ([precinctId, racialData]) => {
-              if (updatedNormalizedData[precinctId]) {
-                // Calculate predominant race
-                let predominantRace = "Unknown";
-                let maxCount = 0;
-
-                Object.entries(racialData).forEach(([race, count]) => {
-                  if (count > maxCount) {
-                    maxCount = count;
-                    predominantRace = race;
-                  }
-                });
-
-                updatedNormalizedData[precinctId].racialDemographics =
-                  racialData;
-                updatedNormalizedData[precinctId].predominantRace =
-                  predominantRace;
-
-                console.log(
-                  `Updated precinct ${precinctId} with predominant race: ${predominantRace}`
-                );
-              }
-            }
-          );
-
-          setNormalizedData(updatedNormalizedData);
         }
       }
     }
@@ -690,12 +628,15 @@ export default function GeographicMap({
           value = districtData.districtData[districtId].majorityRace;
           console.log(`Using majorityRace from districtData: ${value}`);
         }
-        // If still not available, calculate directly from sampleVoterData
-        else {
-          console.log(`Calculating predominant race directly from sample data`);
+        // If still not available, calculate from raw voter data if available
+        else if (
+          districtData.rawVoterData &&
+          Array.isArray(districtData.rawVoterData)
+        ) {
+          console.log(`Calculating predominant race from raw voter data`);
 
           // Filter voters for this district
-          const districtVoters = sampleVoterData.filter(
+          const districtVoters = districtData.rawVoterData.filter(
             (voter: any) => String(voter.Precinct) === districtId
           );
 
@@ -704,7 +645,22 @@ export default function GeographicMap({
             const raceCounts: Record<string, number> = {};
 
             districtVoters.forEach((voter: any) => {
-              const race = voter.Race || "Unknown";
+              let race = voter.Race || "Unknown";
+
+              // Standardize race categories
+              if (race.toLowerCase().includes("white")) race = "White";
+              else if (race.toLowerCase().includes("black")) race = "Black";
+              else if (
+                race.toLowerCase().includes("hispanic") ||
+                race.toLowerCase().includes("latino")
+              )
+                race = "Hispanic";
+              else if (race.toLowerCase().includes("asian")) race = "Asian";
+              else if (race.toLowerCase().includes("native")) race = "Native";
+              else if (race.toLowerCase().includes("multi"))
+                race = "Multiracial";
+              else race = "Unknown";
+
               raceCounts[race] = (raceCounts[race] || 0) + 1;
             });
 
@@ -727,6 +683,9 @@ export default function GeographicMap({
             value = "Unknown";
             console.log(`No voters found for district ${districtId}`);
           }
+        } else {
+          value = "Unknown";
+          console.log(`No raw voter data available for district ${districtId}`);
         }
 
         console.log(`Final predominant race for ${districtId}: ${value}`);
@@ -811,11 +770,14 @@ export default function GeographicMap({
                 ) {
                   return districtData.districtData[districtId].majorityRace;
                 }
-                // If still not available, calculate directly from sampleVoterData
-                else {
+                // If still not available, calculate from raw voter data if available
+                else if (
+                  districtData.rawVoterData &&
+                  Array.isArray(districtData.rawVoterData)
+                ) {
                   // Filter voters for this district
-                  const districtVoters = sampleVoterData.filter(
-                    (voter) => String(voter.Precinct) === districtId
+                  const districtVoters = districtData.rawVoterData.filter(
+                    (voter: any) => String(voter.Precinct) === districtId
                   );
 
                   if (districtVoters.length > 0) {
@@ -823,7 +785,25 @@ export default function GeographicMap({
                     const raceCounts: Record<string, number> = {};
 
                     districtVoters.forEach((voter: any) => {
-                      const race = voter.Race || "Unknown";
+                      let race = voter.Race || "Unknown";
+
+                      // Standardize race categories
+                      if (race.toLowerCase().includes("white")) race = "White";
+                      else if (race.toLowerCase().includes("black"))
+                        race = "Black";
+                      else if (
+                        race.toLowerCase().includes("hispanic") ||
+                        race.toLowerCase().includes("latino")
+                      )
+                        race = "Hispanic";
+                      else if (race.toLowerCase().includes("asian"))
+                        race = "Asian";
+                      else if (race.toLowerCase().includes("native"))
+                        race = "Native";
+                      else if (race.toLowerCase().includes("multi"))
+                        race = "Multiracial";
+                      else race = "Unknown";
+
                       raceCounts[race] = (raceCounts[race] || 0) + 1;
                     });
 
@@ -841,6 +821,8 @@ export default function GeographicMap({
                     return predominantRace;
                   }
 
+                  return "Unknown";
+                } else {
                   return "Unknown";
                 }
               })()}
@@ -983,12 +965,21 @@ export default function GeographicMap({
                   <TileLayer
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    maxZoom={19}
                   />
                 </LayersControl.BaseLayer>
-                <LayersControl.BaseLayer name="Topo Map">
+                <LayersControl.BaseLayer name="CartoDB Positron">
                   <TileLayer
-                    url="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://opentopomap.org">OpenTopoMap</a> contributors'
+                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    maxZoom={19}
+                  />
+                </LayersControl.BaseLayer>
+                <LayersControl.BaseLayer name="Satellite">
+                  <TileLayer
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                    attribution="Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community"
+                    maxZoom={19}
                   />
                 </LayersControl.BaseLayer>
               </LayersControl>
