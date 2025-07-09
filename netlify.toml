@@ -22,6 +22,10 @@
 [functions.process-data-background]
   included_files = ["shared/schema.ts"]
 
+# Chunked data processing function
+[functions.process-data-chunked]
+  included_files = ["shared/schema.ts"]
+
 # Chunked upload function
 [functions.upload-chunk]
   included_files = ["shared/schema.ts"]

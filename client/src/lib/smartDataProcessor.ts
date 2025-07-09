@@ -1,5 +1,6 @@
 import { apiRequest } from './queryClient';
 import { uploadLargeContent } from './chunkedUpload';
+import { processLargeVoterDataset } from './chunkedDataProcessor';
 
 interface ProcessingOptions {
   onProgress?: (progress: number, stage: string) => void;
@@ -142,60 +143,28 @@ export class SmartDataProcessor {
     geoData: any,
     censusLocation?: any
   ): Promise<any> {
-    this.updateProgress(30, 'Uploading voter data in chunks...');
+    this.updateProgress(30, 'Starting chunked data processing...');
     
-    // Upload voter data in chunks
-    const voterDataResult = await uploadLargeContent(
-      JSON.stringify(voterData),
+    // Use the new chunked data processor
+    const result = await processLargeVoterDataset(
+      voterData,
+      geoData,
+      censusLocation,
       {
-        fileName: 'voter-data.json',
-        fileType: 'application/json',
-        totalSize: JSON.stringify(voterData).length
-      },
-      {
-        onProgress: (progress) => {
-          this.updateProgress(30 + (progress * 0.3), 'Uploading voter data...');
+        chunkSize: 5000, // 5000 records per chunk
+        onProgress: (progress, stage) => {
+          // Map the chunked processor progress to our progress range (30-100)
+          const mappedProgress = 30 + (progress * 0.7);
+          this.updateProgress(mappedProgress, stage);
+        },
+        onStageChange: (stage) => {
+          console.log(`Processing stage: ${stage}`);
         }
       }
     );
-
-    this.updateProgress(60, 'Uploading geographic data in chunks...');
-    
-    // Upload geo data in chunks
-    const geoDataResult = await uploadLargeContent(
-      JSON.stringify(geoData),
-      {
-        fileName: 'geo-data.json',
-        fileType: 'application/json',
-        totalSize: JSON.stringify(geoData).length
-      },
-      {
-        onProgress: (progress) => {
-          this.updateProgress(60 + (progress * 0.2), 'Uploading geographic data...');
-        }
-      }
-    );
-
-    this.updateProgress(80, 'Processing uploaded data...');
-    
-    // Process the uploaded data
-    const jobId = this.generateJobId();
-    const requestData = {
-      voterData: JSON.parse(voterDataResult.content),
-      geoData: JSON.parse(geoDataResult.content),
-      jobId,
-      ...(censusLocation && { censusLocation })
-    };
-
-    const response = await apiRequest('POST', '/api/process-data-background', requestData);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Chunked processing failed: ${errorText}`);
-    }
 
     this.updateProgress(100, 'Chunked processing complete!');
-    return response.json();
+    return result;
   }
 
   private updateProgress(progress: number, stage: string): void {
