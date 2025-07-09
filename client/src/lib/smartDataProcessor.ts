@@ -1,6 +1,6 @@
 import { apiRequest } from './queryClient';
 import { uploadLargeContent } from './chunkedUpload';
-import { processLargeVoterDataset } from './chunkedDataProcessor';
+import { processLargeVoterDatasetSimple } from './simpleChunkedProcessor';
 
 interface ProcessingOptions {
   onProgress?: (progress: number, stage: string) => void;
@@ -146,7 +146,7 @@ export class SmartDataProcessor {
     this.updateProgress(30, 'Starting chunked data processing...');
     
     // Use the new chunked data processor
-    const result = await processLargeVoterDataset(
+    const result = await processLargeVoterDatasetSimple(
       voterData,
       geoData,
       censusLocation,
@@ -156,9 +156,6 @@ export class SmartDataProcessor {
           // Map the chunked processor progress to our progress range (30-100)
           const mappedProgress = 30 + (progress * 0.7);
           this.updateProgress(mappedProgress, stage);
-        },
-        onStageChange: (stage) => {
-          console.log(`Processing stage: ${stage}`);
         }
       }
     );

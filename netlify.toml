@@ -30,6 +30,10 @@
 [functions.upload-chunk]
   included_files = ["shared/schema.ts"]
 
+# Large data processing function with extended timeout
+[functions.process-large-data]
+  included_files = ["shared/schema.ts"]
+
 # Redirect all API requests to Netlify Functions
 [[redirects]]
   from = "/api/*"
