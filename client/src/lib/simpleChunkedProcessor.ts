@@ -83,7 +83,7 @@ export class SimpleChunkedProcessor {
   ): Promise<any> {
     this.updateStage('Processing chunks individually...');
     
-    let combinedResults: any[] = [];
+    let combinedProcessedData: any = null;
     const totalChunks = chunks.length;
     
     for (let i = 0; i < totalChunks; i++) {
@@ -106,23 +106,100 @@ export class SimpleChunkedProcessor {
       
       const chunkResult = await response.json();
       
-      // Combine results (assuming the result has a data array)
-      if (chunkResult.data && Array.isArray(chunkResult.data)) {
-        combinedResults = combinedResults.concat(chunkResult.data);
+      if (i === 0) {
+        // First chunk - use as base structure
+        combinedProcessedData = { ...chunkResult };
       } else {
-        // If not an array, collect all results
-        combinedResults.push(chunkResult);
+        // Subsequent chunks - merge the data
+        this.mergeProcessedData(combinedProcessedData, chunkResult);
       }
     }
     
-    this.updateProgress(95, 'Combining results...');
+    this.updateProgress(95, 'Finalizing combined results...');
     
-    // Return combined results in the same format as the original
-    return {
-      data: combinedResults,
-      totalProcessed: combinedResults.length,
-      processingMethod: 'chunked-individual'
-    };
+    // Return the properly combined processed data
+    return combinedProcessedData;
+  }
+
+  private mergeProcessedData(base: any, chunk: any): void {
+    // Merge party affiliation data
+    if (chunk.partyAffiliation) {
+      Object.keys(chunk.partyAffiliation).forEach(party => {
+        base.partyAffiliation[party] = (base.partyAffiliation[party] || 0) + chunk.partyAffiliation[party];
+      });
+    }
+
+    // Merge age group turnout data
+    if (chunk.ageGroupTurnout) {
+      chunk.ageGroupTurnout.voted.forEach((count: number, index: number) => {
+        base.ageGroupTurnout.voted[index] = (base.ageGroupTurnout.voted[index] || 0) + count;
+      });
+      chunk.ageGroupTurnout.notVoted.forEach((count: number, index: number) => {
+        base.ageGroupTurnout.notVoted[index] = (base.ageGroupTurnout.notVoted[index] || 0) + count;
+      });
+    }
+
+    // Merge racial demographics
+    if (chunk.racialDemographics) {
+      Object.keys(chunk.racialDemographics).forEach(race => {
+        base.racialDemographics[race] = (base.racialDemographics[race] || 0) + chunk.racialDemographics[race];
+      });
+    }
+
+    // Merge precinct demographics
+    if (chunk.precinctDemographics) {
+      // Add new precincts
+      chunk.precinctDemographics.precincts.forEach((precinct: string) => {
+        if (!base.precinctDemographics.precincts.includes(precinct)) {
+          base.precinctDemographics.precincts.push(precinct);
+        }
+      });
+
+      // Merge registered voters
+      Object.assign(base.precinctDemographics.registeredVoters, chunk.precinctDemographics.registeredVoters);
+      
+      // Merge turnout percentage
+      Object.assign(base.precinctDemographics.turnoutPercentage, chunk.precinctDemographics.turnoutPercentage);
+      
+      // Merge party affiliation by precinct
+      Object.assign(base.precinctDemographics.partyAffiliation, chunk.precinctDemographics.partyAffiliation);
+      
+      // Merge racial demographics by precinct
+      Object.assign(base.precinctDemographics.racialDemographics, chunk.precinctDemographics.racialDemographics);
+    }
+
+    // Merge district data
+    if (chunk.districtData) {
+      Object.assign(base.districtData, chunk.districtData);
+    }
+
+    // Update summary stats (recalculate totals)
+    this.updateSummaryStats(base);
+  }
+
+  private updateSummaryStats(processedData: any): void {
+    // Recalculate summary statistics based on combined data
+    if (processedData.summaryStats && processedData.partyAffiliation) {
+      const totalVoters = Object.values(processedData.partyAffiliation).reduce((sum: number, count: any) => sum + count, 0);
+      
+      // Update total voters stat
+      const totalVotersStat = processedData.summaryStats.find((stat: any) => stat.label === 'Total Voters');
+      if (totalVotersStat) {
+        totalVotersStat.value = totalVoters.toLocaleString();
+      }
+
+      // Update other stats as needed
+      if (processedData.ageGroupTurnout) {
+        const totalVoted = processedData.ageGroupTurnout.voted.reduce((sum: number, count: number) => sum + count, 0);
+        const totalNotVoted = processedData.ageGroupTurnout.notVoted.reduce((sum: number, count: number) => sum + count, 0);
+        const turnoutRate = totalVoted / (totalVoted + totalNotVoted) * 100;
+        
+        const turnoutStat = processedData.summaryStats.find((stat: any) => stat.label === 'Turnout Rate');
+        if (turnoutStat) {
+          turnoutStat.value = `${turnoutRate.toFixed(1)}%`;
+        }
+      }
+    }
   }
 
   private async processDirectly(voterData: any[], geoData: any, censusLocation?: any): Promise<any> {
