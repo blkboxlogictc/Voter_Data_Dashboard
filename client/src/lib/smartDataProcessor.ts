@@ -1,5 +1,4 @@
 import { apiRequest } from './queryClient';
-import { uploadLargeContent } from './chunkedUpload';
 import { processLargeVoterDatasetSimple } from './simpleChunkedProcessor';
 
 interface ProcessingOptions {
@@ -9,7 +8,7 @@ interface ProcessingOptions {
 
 interface ProcessingResult {
   data: any;
-  processingMethod: 'sync' | 'background' | 'chunked';
+  processingMethod: 'sync' | 'chunked';
   processingTime: number;
 }
 
@@ -65,18 +64,9 @@ export class SmartDataProcessor {
         processingMethod: 'sync',
         processingTime: Date.now() - startTime
       };
-    } else if (totalSize < 50 * 1024 * 1024) { // 50MB
-      // Medium data - use background processing
-      this.updateProgress(20, 'Using background processing for large dataset...');
-      const result = await this.processInBackground(voterData, geoData, censusLocation);
-      return {
-        data: result,
-        processingMethod: 'background',
-        processingTime: Date.now() - startTime
-      };
     } else {
-      // Very large data - use chunked upload + background processing
-      this.updateProgress(20, 'Using chunked upload for very large dataset...');
+      // Large data - use chunked processing for anything over 5MB
+      this.updateProgress(20, 'Using chunked processing for large dataset...');
       const result = await this.processWithChunking(voterData, geoData, censusLocation);
       return {
         data: result,
@@ -110,33 +100,6 @@ export class SmartDataProcessor {
     return response.json();
   }
 
-  private async processInBackground(
-    voterData: any,
-    geoData: any,
-    censusLocation?: any
-  ): Promise<any> {
-    this.updateProgress(30, 'Starting background processing...');
-    
-    const jobId = this.generateJobId();
-    const requestData = {
-      voterData,
-      geoData,
-      jobId,
-      ...(censusLocation && { censusLocation })
-    };
-
-    this.updateProgress(50, 'Submitting to background processor...');
-    
-    const response = await apiRequest('POST', '/api/process-data-background', requestData);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Background processing failed: ${errorText}`);
-    }
-
-    this.updateProgress(100, 'Background processing complete!');
-    return response.json();
-  }
 
   private async processWithChunking(
     voterData: any,

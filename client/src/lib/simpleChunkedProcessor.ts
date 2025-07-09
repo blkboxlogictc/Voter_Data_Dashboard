@@ -45,13 +45,25 @@ export class SimpleChunkedProcessor {
     this.updateProgress(30, 'Sending data for processing...');
     this.updateStage('Processing large dataset...');
     
-    // Step 2: Send all chunks at once to the processing function
-    const response = await apiRequest('POST', '/api/process-large-data', {
+    // Step 2: Check if the payload is still too large
+    const payload = {
       voterDataChunks: chunks,
       geoData,
       censusLocation,
       totalRecords: voterData.length
-    });
+    };
+    
+    const payloadSize = JSON.stringify(payload).length;
+    console.log(`Payload size: ${(payloadSize / 1024 / 1024).toFixed(2)}MB`);
+    
+    // If payload is still too large (> 5MB), we need to process chunks individually
+    if (payloadSize > 5 * 1024 * 1024) {
+      console.log('Payload too large, processing chunks individually...');
+      return this.processChunksIndividually(chunks, geoData, censusLocation);
+    }
+    
+    // Step 3: Send all chunks at once to the processing function
+    const response = await apiRequest('POST', '/api/process-large-data', payload);
 
     if (!response.ok) {
       const error = await response.json();
@@ -62,6 +74,55 @@ export class SimpleChunkedProcessor {
     this.updateStage('Processing completed!');
     
     return response.json();
+  }
+
+  private async processChunksIndividually(
+    chunks: any[][],
+    geoData: any,
+    censusLocation?: any
+  ): Promise<any> {
+    this.updateStage('Processing chunks individually...');
+    
+    let combinedResults: any[] = [];
+    const totalChunks = chunks.length;
+    
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = chunks[i];
+      const progress = 30 + ((i / totalChunks) * 60); // Progress from 30% to 90%
+      
+      this.updateProgress(progress, `Processing chunk ${i + 1} of ${totalChunks}...`);
+      
+      // Process each chunk individually using the regular process-data endpoint
+      const response = await apiRequest('POST', '/api/process-data', {
+        voterData: chunk,
+        geoData,
+        censusLocation
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(`Chunk ${i + 1} processing failed: ${error.message || 'Unknown error'}`);
+      }
+      
+      const chunkResult = await response.json();
+      
+      // Combine results (assuming the result has a data array)
+      if (chunkResult.data && Array.isArray(chunkResult.data)) {
+        combinedResults = combinedResults.concat(chunkResult.data);
+      } else {
+        // If not an array, collect all results
+        combinedResults.push(chunkResult);
+      }
+    }
+    
+    this.updateProgress(95, 'Combining results...');
+    
+    // Return combined results in the same format as the original
+    return {
+      data: combinedResults,
+      totalProcessed: combinedResults.length,
+      processingMethod: 'chunked-individual'
+    };
   }
 
   private async processDirectly(voterData: any[], geoData: any, censusLocation?: any): Promise<any> {
