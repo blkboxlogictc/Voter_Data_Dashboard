@@ -1,5 +1,6 @@
 import { apiRequest } from './queryClient';
 import { processLargeVoterDatasetSimple } from './simpleChunkedProcessor';
+import { processVoterDataLocally } from './localDataProcessor';
 
 interface ProcessingOptions {
   onProgress?: (progress: number, stage: string) => void;
@@ -83,6 +84,32 @@ export class SmartDataProcessor {
   ): Promise<any> {
     this.updateProgress(50, 'Processing data...');
     
+    // Check if we're in development mode
+    const isDevelopment = !import.meta.env.PROD;
+    
+    if (isDevelopment) {
+      // In development, use local processing instead of API calls
+      this.updateProgress(60, 'Using local processing...');
+      
+      // Use the local data processor for all development processing
+      const result = await processVoterDataLocally(
+        voterData,
+        geoData,
+        censusLocation,
+        {
+          onProgress: (progress, stage) => {
+            // Map the local processor progress to our progress range (60-100)
+            const mappedProgress = 60 + (progress * 0.4);
+            this.updateProgress(mappedProgress, stage);
+          }
+        }
+      );
+      
+      this.updateProgress(100, 'Local processing complete!');
+      return result;
+    }
+    
+    // Production synchronous processing - use API
     // Ensure voter data is in the correct format for synchronous processing
     let processedVoterData: any;
     if (Array.isArray(voterData)) {

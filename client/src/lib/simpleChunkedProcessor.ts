@@ -194,7 +194,9 @@ export class SimpleChunkedProcessor {
         const tracking = base.precinctDemographics._turnoutTracking[precinct];
         if (tracking.total > 0) {
           base.precinctDemographics.turnoutPercentage[precinct] =
-            ((tracking.voted / tracking.total) * 100).toFixed(1);
+            Math.round((tracking.voted / tracking.total) * 100);
+        } else {
+          base.precinctDemographics.turnoutPercentage[precinct] = 0;
         }
       });
       
