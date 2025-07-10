@@ -187,8 +187,8 @@ class MemStorage {
       
       const turnout = districtVoterCount > 0 ? votedCount / districtVoterCount : 0;
       
-      // Calculate average age
-      const totalAge = precinctVoters.reduce((sum: number, v: any) => sum + (v.Age || 0), 0);
+      // Calculate average age (using parseInt like the summary stats calculation)
+      const totalAge = precinctVoters.reduce((sum: number, v: any) => sum + (parseInt(v.Age) || 0), 0);
       const averageAge = districtVoterCount > 0 ? totalAge / districtVoterCount : 0;
       
       // Determine majority party
