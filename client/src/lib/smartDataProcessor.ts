@@ -83,8 +83,22 @@ export class SmartDataProcessor {
   ): Promise<any> {
     this.updateProgress(50, 'Processing data...');
     
+    // Ensure voter data is in the correct format for synchronous processing
+    let processedVoterData: any;
+    if (Array.isArray(voterData)) {
+      // If it's already an array, wrap it in the expected format
+      processedVoterData = { voters: voterData };
+      console.log(`Synchronous processing: ${voterData.length} voter records (array format)`);
+    } else if (voterData && voterData.voters && Array.isArray(voterData.voters)) {
+      // If it's already in the correct format, use as-is
+      processedVoterData = voterData;
+      console.log(`Synchronous processing: ${voterData.voters.length} voter records (object format)`);
+    } else {
+      throw new Error('Invalid voter data format. Expected array or object with voters property.');
+    }
+    
     const requestData = {
-      voterData,
+      voterData: processedVoterData,
       geoData,
       ...(censusLocation && { censusLocation })
     };
@@ -108,9 +122,21 @@ export class SmartDataProcessor {
   ): Promise<any> {
     this.updateProgress(30, 'Starting chunked data processing...');
     
+    // Ensure voter data is in the correct format (array of voter records)
+    let voterArray: any[];
+    if (Array.isArray(voterData)) {
+      voterArray = voterData;
+      console.log(`Processing ${voterArray.length} voter records (array format)`);
+    } else if (voterData && voterData.voters && Array.isArray(voterData.voters)) {
+      voterArray = voterData.voters;
+      console.log(`Processing ${voterArray.length} voter records (object with voters property)`);
+    } else {
+      throw new Error('Invalid voter data format. Expected array or object with voters property.');
+    }
+    
     // Use the new chunked data processor
     const result = await processLargeVoterDatasetSimple(
-      voterData,
+      voterArray,
       geoData,
       censusLocation,
       {
