@@ -226,12 +226,13 @@ export class SimpleChunkedProcessor {
       }
 
       // Update average age using district data (weighted average)
+      // Only recalculate if we have reliable district data, otherwise keep the original value
       if (processedData.districtData && totalVoters > 0) {
         let totalAge = 0;
         let totalVotersForAge = 0;
         
         Object.values(processedData.districtData).forEach((district: any) => {
-          if (district.averageAge && district.registeredVoters) {
+          if (district.averageAge && district.registeredVoters && district.averageAge > 0) {
             totalAge += district.averageAge * district.registeredVoters;
             totalVotersForAge += district.registeredVoters;
           }
@@ -239,13 +240,22 @@ export class SimpleChunkedProcessor {
         
         console.log(`UpdateSummaryStats: Age calculation - Total Age: ${totalAge}, Total Voters for Age: ${totalVotersForAge}`);
         
-        if (totalVotersForAge > 0) {
+        // Only update if we have sufficient data and the calculation makes sense
+        if (totalVotersForAge > 0 && totalVotersForAge >= totalVoters * 0.8) {
           const avgAge = totalAge / totalVotersForAge;
-          const avgAgeStat = processedData.summaryStats.find((stat: any) => stat.label === 'Avg. Age');
-          if (avgAgeStat) {
-            avgAgeStat.value = avgAge.toFixed(1);
-            console.log(`UpdateSummaryStats: Updated Avg. Age stat to: ${avgAgeStat.value}`);
+          
+          // Sanity check: average age should be reasonable (18-100)
+          if (avgAge >= 18 && avgAge <= 100) {
+            const avgAgeStat = processedData.summaryStats.find((stat: any) => stat.label === 'Avg. Age');
+            if (avgAgeStat) {
+              avgAgeStat.value = avgAge.toFixed(1);
+              console.log(`UpdateSummaryStats: Updated Avg. Age stat to: ${avgAgeStat.value}`);
+            }
+          } else {
+            console.log(`UpdateSummaryStats: Calculated age ${avgAge.toFixed(1)} is unreasonable, keeping original value`);
           }
+        } else {
+          console.log(`UpdateSummaryStats: Insufficient age data (${totalVotersForAge}/${totalVoters}), keeping original value`);
         }
       }
     }
