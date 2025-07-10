@@ -184,19 +184,19 @@ export class SimpleChunkedProcessor {
   private updateSummaryStats(processedData: any): void {
     // Recalculate summary statistics based on combined data
     if (processedData.summaryStats) {
-      // Calculate total voters from precinct demographics (most accurate)
+      // Calculate total voters from party affiliation data (most reliable for voter count)
       let totalVoters = 0;
-      if (processedData.precinctDemographics && processedData.precinctDemographics.registeredVoters) {
-        totalVoters = Object.values(processedData.precinctDemographics.registeredVoters).reduce((sum: number, count: any) => sum + count, 0);
-      } else if (processedData.partyAffiliation) {
-        // Fallback to party affiliation data
+      if (processedData.partyAffiliation) {
         totalVoters = Object.values(processedData.partyAffiliation).reduce((sum: number, count: any) => sum + count, 0);
       }
+      
+      console.log(`UpdateSummaryStats: Calculated total voters from party affiliation: ${totalVoters}`);
       
       // Update registered voters stat (correct label from storage.ts)
       const registeredVotersStat = processedData.summaryStats.find((stat: any) => stat.label === 'Registered Voters');
       if (registeredVotersStat && totalVoters > 0) {
         registeredVotersStat.value = totalVoters.toLocaleString();
+        console.log(`UpdateSummaryStats: Updated Registered Voters stat to: ${registeredVotersStat.value}`);
       }
 
       // Update voter turnout stat
