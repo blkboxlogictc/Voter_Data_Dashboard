@@ -234,12 +234,20 @@ class MemStorage {
       };
     });
     
+    // Calculate age tracking data for chunked processing
+    const totalAge = voters.reduce((sum: number, v: any) => sum + (parseInt(v.Age) || 0), 0);
+    const totalVotersWithAge = voters.length;
+    
     return {
       partyAffiliation: partyCount,
       racialDemographics: raceCount,
       ageGroupTurnout: this.calculateAgeGroupTurnout(voters),
       turnoutTrends: this.calculateTurnoutTrends(voters),
       precinctDemographics,
+      _ageTracking: {
+        totalAge: totalAge,
+        totalVoters: totalVotersWithAge
+      },
       summaryStats: [
         {
           label: 'Registered Voters',

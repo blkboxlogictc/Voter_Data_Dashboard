@@ -122,6 +122,11 @@ export class SimpleChunkedProcessor {
   }
 
   private mergeProcessedData(base: any, chunk: any): void {
+    // Initialize age tracking if not present
+    if (!base._ageTracking) {
+      base._ageTracking = { totalAge: 0, totalVoters: 0 };
+    }
+    
     // Merge party affiliation data
     if (chunk.partyAffiliation) {
       Object.keys(chunk.partyAffiliation).forEach(party => {
@@ -177,6 +182,12 @@ export class SimpleChunkedProcessor {
       Object.assign(base.districtData, chunk.districtData);
     }
 
+    // Track age data from chunk for accurate average calculation
+    if (chunk._ageTracking) {
+      base._ageTracking.totalAge += chunk._ageTracking.totalAge;
+      base._ageTracking.totalVoters += chunk._ageTracking.totalVoters;
+    }
+
     // Update summary stats (recalculate totals)
     this.updateSummaryStats(base);
   }
@@ -225,38 +236,24 @@ export class SimpleChunkedProcessor {
         console.log(`UpdateSummaryStats: Updated Districts stat to: ${districtsStat.value}`);
       }
 
-      // Update average age using district data (weighted average)
-      // Only recalculate if we have reliable district data, otherwise keep the original value
-      if (processedData.districtData && totalVoters > 0) {
-        let totalAge = 0;
-        let totalVotersForAge = 0;
+      // Update average age using direct age tracking (same method as storage.ts)
+      if (processedData._ageTracking && processedData._ageTracking.totalVoters > 0) {
+        const avgAge = processedData._ageTracking.totalAge / processedData._ageTracking.totalVoters;
         
-        Object.values(processedData.districtData).forEach((district: any) => {
-          if (district.averageAge && district.registeredVoters && district.averageAge > 0) {
-            totalAge += district.averageAge * district.registeredVoters;
-            totalVotersForAge += district.registeredVoters;
-          }
-        });
+        console.log(`UpdateSummaryStats: Direct age calculation - Total Age: ${processedData._ageTracking.totalAge}, Total Voters: ${processedData._ageTracking.totalVoters}, Average: ${avgAge.toFixed(1)}`);
         
-        console.log(`UpdateSummaryStats: Age calculation - Total Age: ${totalAge}, Total Voters for Age: ${totalVotersForAge}`);
-        
-        // Only update if we have sufficient data and the calculation makes sense
-        if (totalVotersForAge > 0 && totalVotersForAge >= totalVoters * 0.8) {
-          const avgAge = totalAge / totalVotersForAge;
-          
-          // Sanity check: average age should be reasonable (18-100)
-          if (avgAge >= 18 && avgAge <= 100) {
-            const avgAgeStat = processedData.summaryStats.find((stat: any) => stat.label === 'Avg. Age');
-            if (avgAgeStat) {
-              avgAgeStat.value = avgAge.toFixed(1);
-              console.log(`UpdateSummaryStats: Updated Avg. Age stat to: ${avgAgeStat.value}`);
-            }
-          } else {
-            console.log(`UpdateSummaryStats: Calculated age ${avgAge.toFixed(1)} is unreasonable, keeping original value`);
+        // Sanity check: average age should be reasonable (18-100)
+        if (avgAge >= 18 && avgAge <= 100) {
+          const avgAgeStat = processedData.summaryStats.find((stat: any) => stat.label === 'Avg. Age');
+          if (avgAgeStat) {
+            avgAgeStat.value = avgAge.toFixed(1);
+            console.log(`UpdateSummaryStats: Updated Avg. Age stat to: ${avgAgeStat.value} (direct calculation)`);
           }
         } else {
-          console.log(`UpdateSummaryStats: Insufficient age data (${totalVotersForAge}/${totalVoters}), keeping original value`);
+          console.log(`UpdateSummaryStats: Calculated age ${avgAge.toFixed(1)} is unreasonable, keeping original value`);
         }
+      } else {
+        console.log(`UpdateSummaryStats: No age tracking data available, keeping original average age value`);
       }
     }
   }
