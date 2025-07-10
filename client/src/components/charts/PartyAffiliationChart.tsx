@@ -100,20 +100,40 @@ export default function PartyAffiliationChart({
 
     const total = values.reduce((sum, val) => sum + val, 0);
 
-    // Define colors for common political parties - consistent across all views
+    // Define colors for common political parties - consistent with PrecinctDemographicsChart
+    const partyColors: Record<string, string> = {
+      D: "rgba(25, 118, 210, 0.8)", // Democrat - blue
+      R: "rgba(211, 47, 47, 0.8)", // Republican - red
+      NP: "rgba(149, 117, 205, 0.8)", // No Party - purple
+      G: "rgba(46, 125, 50, 0.8)", // Green - green
+      L: "rgba(255, 167, 38, 0.8)", // Libertarian - orange
+      I: "rgba(156, 39, 176, 0.8)", // Independent - purple
+      O: "rgba(121, 85, 72, 0.8)", // Other - brown
+      // Full name mappings for backward compatibility
+      Democratic: "rgba(25, 118, 210, 0.8)",
+      Republican: "rgba(211, 47, 47, 0.8)",
+      Green: "rgba(46, 125, 50, 0.8)",
+      Libertarian: "rgba(255, 167, 38, 0.8)",
+      Independent: "rgba(156, 39, 176, 0.8)",
+    };
+
     const getPartyColors = (labels: string[]) => {
       return labels.map((label) => {
+        // First try exact match
+        if (partyColors[label]) {
+          return partyColors[label];
+        }
+
+        // Then try case-insensitive partial match
         const lowerLabel = label.toLowerCase();
-        if (lowerLabel.includes("democrat")) return "rgba(25, 118, 210, 0.8)";
-        if (lowerLabel.includes("republican")) return "rgba(211, 47, 47, 0.8)";
-        if (lowerLabel.includes("green")) return "rgba(46, 125, 50, 0.8)";
-        if (lowerLabel.includes("libertarian"))
-          return "rgba(255, 167, 38, 0.8)";
-        if (lowerLabel.includes("independent"))
-          return "rgba(149, 117, 205, 0.8)";
-        return `rgba(${Math.floor(Math.random() * 200)}, ${Math.floor(
-          Math.random() * 200
-        )}, ${Math.floor(Math.random() * 200)}, 0.8)`;
+        if (lowerLabel.includes("democrat")) return partyColors.Democratic;
+        if (lowerLabel.includes("republican")) return partyColors.Republican;
+        if (lowerLabel.includes("green")) return partyColors.Green;
+        if (lowerLabel.includes("libertarian")) return partyColors.Libertarian;
+        if (lowerLabel.includes("independent")) return partyColors.Independent;
+
+        // Default color for unknown parties
+        return "rgba(158, 158, 158, 0.8)"; // Gray for unknown parties
       });
     };
 
