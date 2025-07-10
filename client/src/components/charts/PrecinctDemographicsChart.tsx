@@ -30,246 +30,272 @@ export default function PrecinctDemographicsChart({
   const [viewType, setViewType] = useState<ViewType>("registered");
 
   useEffect(() => {
-    // Debug: Log the data received by the component
-    console.log("PrecinctDemographicsChart data:", data);
+    try {
+      // Debug: Log the data received by the component
+      console.log("PrecinctDemographicsChart data:", data);
+      console.log("PrecinctDemographicsChart viewType:", viewType);
 
-    if (!chartRef.current) {
-      console.log("PrecinctDemographicsChart: No chart ref");
-      return;
-    }
-
-    if (!data) {
-      console.log("PrecinctDemographicsChart: No data provided");
-      return;
-    }
-
-    if (!data.precincts) {
-      console.log("PrecinctDemographicsChart: No precincts in data");
-      return;
-    }
-
-    if (data.precincts.length === 0) {
-      console.log("PrecinctDemographicsChart: Empty precincts array");
-      return;
-    }
-
-    console.log("PrecinctDemographicsChart: Data is valid, rendering chart");
-
-    // Sort precincts numerically if possible
-    const sortedPrecincts = [...data.precincts].sort((a, b) => {
-      const numA = parseInt(a);
-      const numB = parseInt(b);
-      if (!isNaN(numA) && !isNaN(numB)) {
-        return numA - numB;
+      if (!chartRef.current) {
+        console.log("PrecinctDemographicsChart: No chart ref");
+        return;
       }
-      return a.localeCompare(b);
-    });
 
-    let chartData: Plotly.Data[] = [];
-    let layout: Partial<Plotly.Layout> = {
-      margin: { t: 10, b: 50, l: 50, r: 20 },
-      height: 300,
-      font: {
-        family: "Inter, sans-serif",
-      },
-      xaxis: {
-        title: "Precinct",
-        titlefont: {
+      if (!data) {
+        console.log("PrecinctDemographicsChart: No data provided");
+        return;
+      }
+
+      if (!data.precincts) {
+        console.log("PrecinctDemographicsChart: No precincts in data");
+        return;
+      }
+
+      if (data.precincts.length === 0) {
+        console.log("PrecinctDemographicsChart: Empty precincts array");
+        return;
+      }
+
+      console.log("PrecinctDemographicsChart: Data is valid, rendering chart");
+
+      // Sort precincts numerically if possible
+      const sortedPrecincts = [...data.precincts].sort((a, b) => {
+        const numA = parseInt(a);
+        const numB = parseInt(b);
+        if (!isNaN(numA) && !isNaN(numB)) {
+          return numA - numB;
+        }
+        return a.localeCompare(b);
+      });
+
+      let chartData: Plotly.Data[] = [];
+      let layout: Partial<Plotly.Layout> = {
+        margin: { t: 10, b: 50, l: 50, r: 20 },
+        height: 300,
+        font: {
           family: "Inter, sans-serif",
-          size: 12,
         },
-        // Limit the number of ticks shown if there are many precincts
-        tickmode: sortedPrecincts.length > 10 ? "auto" : "array",
-        tickvals: sortedPrecincts,
-      },
-      barmode: "group",
-    };
-
-    // Configure chart based on selected view
-    switch (viewType) {
-      case "registered":
-        // Total registered voters per precinct
-        const registeredValues = sortedPrecincts.map(
-          (precinct) => data.registeredVoters[precinct] || 0
-        );
-
-        chartData = [
-          {
-            x: sortedPrecincts,
-            y: registeredValues,
-            type: "bar",
-            marker: {
-              color: "rgba(56, 142, 60, 0.8)",
-            },
-            text: registeredValues.map((v) => v.toLocaleString()),
-            textposition: "auto",
-            hovertemplate:
-              "Precinct %{x}<br>Registered Voters: %{y:,}<extra></extra>",
-          },
-        ];
-
-        layout.yaxis = {
-          title: "Number of Registered Voters",
+        xaxis: {
+          title: "Precinct",
           titlefont: {
             family: "Inter, sans-serif",
             size: 12,
           },
-        };
-        break;
+          // Limit the number of ticks shown if there are many precincts
+          tickmode: sortedPrecincts.length > 10 ? "auto" : "array",
+          tickvals: sortedPrecincts,
+        },
+        barmode: "group",
+      };
 
-      case "turnout":
-        // Voter turnout percentage by precinct as a stacked bar chart
-        const turnoutValues = sortedPrecincts.map(
-          (precinct) => data.turnoutPercentage[precinct] || 0
-        );
+      // Configure chart based on selected view
+      switch (viewType) {
+        case "registered":
+          // Total registered voters per precinct
+          const registeredValues = sortedPrecincts.map(
+            (precinct) => data.registeredVoters[precinct] || 0
+          );
 
-        // Calculate the "Did Not Vote" percentages
-        const notVotedValues = turnoutValues.map((turnout) => 100 - turnout);
-
-        // Create stacked bar chart with "Voted" and "Did Not Vote" segments
-        chartData = [
-          {
-            x: sortedPrecincts,
-            y: turnoutValues,
-            name: "Voted",
-            type: "bar",
-            marker: {
-              color: "rgba(56, 142, 60, 0.8)", // Green for voted
+          chartData = [
+            {
+              x: sortedPrecincts,
+              y: registeredValues,
+              type: "bar",
+              marker: {
+                color: "rgba(56, 142, 60, 0.8)",
+              },
+              text: registeredValues.map((v) => v.toLocaleString()),
+              textposition: "auto",
+              hovertemplate:
+                "Precinct %{x}<br>Registered Voters: %{y:,}<extra></extra>",
             },
-            text: turnoutValues.map((v) => `${v.toFixed(1)}%`),
-            textposition: "auto",
-            hovertemplate: "Precinct %{x}<br>Voted: %{y:.1f}%<extra></extra>",
-          },
-          {
-            x: sortedPrecincts,
-            y: notVotedValues,
-            name: "Did Not Vote",
-            type: "bar",
-            marker: {
-              color: "rgba(211, 47, 47, 0.8)", // Red for not voted
+          ];
+
+          layout.yaxis = {
+            title: "Number of Registered Voters",
+            titlefont: {
+              family: "Inter, sans-serif",
+              size: 12,
             },
-            text: notVotedValues.map((v) => `${v.toFixed(1)}%`),
-            textposition: "auto",
-            hovertemplate:
-              "Precinct %{x}<br>Did Not Vote: %{y:.1f}%<extra></extra>",
-          },
-        ];
+          };
+          break;
 
-        layout.yaxis = {
-          title: "Percentage (%)",
-          titlefont: {
-            family: "Inter, sans-serif",
-            size: 12,
-          },
-          range: [0, 100],
-        };
-
-        layout.barmode = "stack";
-        layout.legend = {
-          x: 0,
-          y: 1.1,
-          orientation: "h",
-        };
-        break;
-
-      case "party":
-        // Party affiliation distribution within each precinct as percentage stacked chart
-        // Get all unique parties across all precincts
-        const allParties = new Set<string>();
-        sortedPrecincts.forEach((precinct) => {
-          if (data.partyAffiliation[precinct]) {
-            Object.keys(data.partyAffiliation[precinct]).forEach((party) => {
-              allParties.add(party);
-            });
-          }
-        });
-
-        const parties = Array.from(allParties);
-
-        // Define colors for common political parties - consistent with other charts
-        const partyColors = {
-          D: "rgba(25, 118, 210, 0.8)", // Democrat - blue
-          R: "rgba(211, 47, 47, 0.8)", // Republican - red
-          NP: "rgba(149, 117, 205, 0.8)", // No Party - purple
-          G: "rgba(46, 125, 50, 0.8)", // Green - green
-          L: "rgba(255, 167, 38, 0.8)", // Libertarian - orange
-          I: "rgba(156, 39, 176, 0.8)", // Independent - purple
-          O: "rgba(121, 85, 72, 0.8)", // Other - brown
-        };
-
-        // Define party labels for hover text
-        const partyLabels: Record<string, string> = {
-          D: "Democratic",
-          R: "Republican",
-          NP: "No Party",
-          G: "Green",
-          L: "Libertarian",
-          I: "Independent",
-          O: "Other",
-        };
-
-        // Calculate percentage distribution for each party within each precinct
-        chartData = parties.map((party) => {
-          const partyPercentages = sortedPrecincts.map((precinct) => {
-            // Get total voters in this precinct
-            const precinctTotal = Object.values(
-              data.partyAffiliation[precinct] || {}
-            ).reduce((sum, count) => sum + count, 0);
-
-            // Get this party's count in the precinct
-            const partyCount =
-              (data.partyAffiliation[precinct] &&
-                data.partyAffiliation[precinct][party]) ||
-              0;
-
-            // Calculate percentage (avoid division by zero)
-            return precinctTotal > 0 ? (partyCount / precinctTotal) * 100 : 0;
+        case "turnout":
+          // Voter turnout percentage by precinct as a stacked bar chart
+          const turnoutValues = sortedPrecincts.map((precinct) => {
+            const turnout = data.turnoutPercentage[precinct];
+            // Ensure turnout is a valid number between 0 and 100
+            if (typeof turnout !== "number" || isNaN(turnout) || turnout < 0) {
+              return 0;
+            }
+            return Math.min(100, turnout); // Cap at 100%
           });
 
-          return {
-            name: partyLabels[party] || party,
-            x: sortedPrecincts,
-            y: partyPercentages,
-            type: "bar",
-            marker: {
-              color:
-                partyColors[party as keyof typeof partyColors] ||
-                `rgba(${Math.floor(Math.random() * 200)}, ${Math.floor(
-                  Math.random() * 200
-                )}, ${Math.floor(Math.random() * 200)}, 0.8)`,
+          // Calculate the "Did Not Vote" percentages
+          const notVotedValues = turnoutValues.map((turnout) => {
+            const notVoted = 100 - turnout;
+            return Math.max(0, notVoted); // Ensure non-negative
+          });
+
+          // Create stacked bar chart with "Voted" and "Did Not Vote" segments
+          chartData = [
+            {
+              x: sortedPrecincts,
+              y: turnoutValues,
+              name: "Voted",
+              type: "bar",
+              marker: {
+                color: "rgba(56, 142, 60, 0.8)", // Green for voted
+              },
+              text: turnoutValues.map((v) => `${v.toFixed(1)}%`),
+              textposition: "auto",
+              hovertemplate: "Precinct %{x}<br>Voted: %{y:.1f}%<extra></extra>",
             },
-            text: partyPercentages.map((v) => `${v.toFixed(1)}%`),
-            textposition: "auto",
-            hovertemplate:
-              "Precinct %{x}<br>" +
-              (partyLabels[party] || party) +
-              ": %{y:.1f}%<extra></extra>",
+            {
+              x: sortedPrecincts,
+              y: notVotedValues,
+              name: "Did Not Vote",
+              type: "bar",
+              marker: {
+                color: "rgba(211, 47, 47, 0.8)", // Red for not voted
+              },
+              text: notVotedValues.map((v) => `${v.toFixed(1)}%`),
+              textposition: "auto",
+              hovertemplate:
+                "Precinct %{x}<br>Did Not Vote: %{y:.1f}%<extra></extra>",
+            },
+          ];
+
+          layout.yaxis = {
+            title: "Percentage (%)",
+            titlefont: {
+              family: "Inter, sans-serif",
+              size: 12,
+            },
+            range: [0, 100],
           };
-        });
 
-        layout.yaxis = {
-          title: "Percentage (%)",
-          titlefont: {
-            family: "Inter, sans-serif",
-            size: 12,
-          },
-          range: [0, 100],
-        };
+          layout.barmode = "stack";
+          layout.legend = {
+            x: 0,
+            y: 1.1,
+            orientation: "h",
+          };
+          break;
 
-        layout.barmode = "stack";
-        layout.legend = {
-          x: 0,
-          y: 1.1,
-          orientation: "h",
-        };
-        break;
+        case "party":
+          // Party affiliation distribution within each precinct as percentage stacked chart
+          // Get all unique parties across all precincts
+          const allParties = new Set<string>();
+          sortedPrecincts.forEach((precinct) => {
+            if (data.partyAffiliation[precinct]) {
+              Object.keys(data.partyAffiliation[precinct]).forEach((party) => {
+                allParties.add(party);
+              });
+            }
+          });
+
+          const parties = Array.from(allParties);
+
+          // Define colors for common political parties - consistent with other charts
+          const partyColors = {
+            D: "rgba(25, 118, 210, 0.8)", // Democrat - blue
+            R: "rgba(211, 47, 47, 0.8)", // Republican - red
+            NP: "rgba(149, 117, 205, 0.8)", // No Party - purple
+            G: "rgba(46, 125, 50, 0.8)", // Green - green
+            L: "rgba(255, 167, 38, 0.8)", // Libertarian - orange
+            I: "rgba(156, 39, 176, 0.8)", // Independent - purple
+            O: "rgba(121, 85, 72, 0.8)", // Other - brown
+          };
+
+          // Define party labels for hover text
+          const partyLabels: Record<string, string> = {
+            D: "Democratic",
+            R: "Republican",
+            NP: "No Party",
+            G: "Green",
+            L: "Libertarian",
+            I: "Independent",
+            O: "Other",
+          };
+
+          // Calculate percentage distribution for each party within each precinct
+          chartData = parties.map((party) => {
+            const partyPercentages = sortedPrecincts.map((precinct) => {
+              // Get total voters in this precinct
+              const precinctTotal = Object.values(
+                data.partyAffiliation[precinct] || {}
+              ).reduce((sum, count) => sum + count, 0);
+
+              // Get this party's count in the precinct
+              const partyCount =
+                (data.partyAffiliation[precinct] &&
+                  data.partyAffiliation[precinct][party]) ||
+                0;
+
+              // Calculate percentage (avoid division by zero)
+              return precinctTotal > 0 ? (partyCount / precinctTotal) * 100 : 0;
+            });
+
+            return {
+              name: partyLabels[party] || party,
+              x: sortedPrecincts,
+              y: partyPercentages,
+              type: "bar",
+              marker: {
+                color:
+                  partyColors[party as keyof typeof partyColors] ||
+                  `rgba(${Math.floor(Math.random() * 200)}, ${Math.floor(
+                    Math.random() * 200
+                  )}, ${Math.floor(Math.random() * 200)}, 0.8)`,
+              },
+              text: partyPercentages.map((v) => `${v.toFixed(1)}%`),
+              textposition: "auto",
+              hovertemplate:
+                "Precinct %{x}<br>" +
+                (partyLabels[party] || party) +
+                ": %{y:.1f}%<extra></extra>",
+            };
+          });
+
+          layout.yaxis = {
+            title: "Percentage (%)",
+            titlefont: {
+              family: "Inter, sans-serif",
+              size: 12,
+            },
+            range: [0, 100],
+          };
+
+          layout.barmode = "stack";
+          layout.legend = {
+            x: 0,
+            y: 1.1,
+            orientation: "h",
+          };
+          break;
+      }
+
+      Plotly.newPlot(chartRef.current, chartData, layout, { responsive: true });
+
+      return () => {
+        if (chartRef.current) Plotly.purge(chartRef.current);
+      };
+    } catch (error) {
+      console.error("PrecinctDemographicsChart error:", error);
+      console.error("Error occurred with viewType:", viewType);
+      console.error("Error occurred with data:", data);
+
+      // Clear the chart on error to prevent white screen
+      if (chartRef.current) {
+        chartRef.current.innerHTML = `
+          <div class="flex flex-col items-center justify-center h-full bg-red-50 rounded border border-red-200">
+            <p class="text-red-600 font-medium">Chart Error</p>
+            <p class="text-red-500 text-sm mt-1">Failed to render ${viewType} view</p>
+            <p class="text-red-400 text-xs mt-2">Check console for details</p>
+          </div>
+        `;
+      }
     }
-
-    Plotly.newPlot(chartRef.current, chartData, layout, { responsive: true });
-
-    return () => {
-      if (chartRef.current) Plotly.purge(chartRef.current);
-    };
   }, [data, viewType]);
 
   const handleDownloadChart = () => {
