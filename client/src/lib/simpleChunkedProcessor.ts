@@ -183,24 +183,65 @@ export class SimpleChunkedProcessor {
 
   private updateSummaryStats(processedData: any): void {
     // Recalculate summary statistics based on combined data
-    if (processedData.summaryStats && processedData.partyAffiliation) {
-      const totalVoters = Object.values(processedData.partyAffiliation).reduce((sum: number, count: any) => sum + count, 0);
+    if (processedData.summaryStats) {
+      // Calculate total voters from precinct demographics (most accurate)
+      let totalVoters = 0;
+      if (processedData.precinctDemographics && processedData.precinctDemographics.registeredVoters) {
+        totalVoters = Object.values(processedData.precinctDemographics.registeredVoters).reduce((sum: number, count: any) => sum + count, 0);
+      } else if (processedData.partyAffiliation) {
+        // Fallback to party affiliation data
+        totalVoters = Object.values(processedData.partyAffiliation).reduce((sum: number, count: any) => sum + count, 0);
+      }
       
-      // Update total voters stat
-      const totalVotersStat = processedData.summaryStats.find((stat: any) => stat.label === 'Total Voters');
-      if (totalVotersStat) {
-        totalVotersStat.value = totalVoters.toLocaleString();
+      // Update registered voters stat (correct label from storage.ts)
+      const registeredVotersStat = processedData.summaryStats.find((stat: any) => stat.label === 'Registered Voters');
+      if (registeredVotersStat && totalVoters > 0) {
+        registeredVotersStat.value = totalVoters.toLocaleString();
       }
 
-      // Update other stats as needed
+      // Update voter turnout stat
       if (processedData.ageGroupTurnout) {
         const totalVoted = processedData.ageGroupTurnout.voted.reduce((sum: number, count: number) => sum + count, 0);
         const totalNotVoted = processedData.ageGroupTurnout.notVoted.reduce((sum: number, count: number) => sum + count, 0);
-        const turnoutRate = totalVoted / (totalVoted + totalNotVoted) * 100;
+        const totalEligible = totalVoted + totalNotVoted;
         
-        const turnoutStat = processedData.summaryStats.find((stat: any) => stat.label === 'Turnout Rate');
-        if (turnoutStat) {
-          turnoutStat.value = `${turnoutRate.toFixed(1)}%`;
+        if (totalEligible > 0) {
+          const turnoutRate = (totalVoted / totalEligible) * 100;
+          
+          const turnoutStat = processedData.summaryStats.find((stat: any) => stat.label === 'Voter Turnout');
+          if (turnoutStat) {
+            turnoutStat.value = `${turnoutRate.toFixed(1)}%`;
+          }
+        }
+      }
+
+      // Update districts count
+      const districtsStat = processedData.summaryStats.find((stat: any) => stat.label === 'Districts');
+      if (districtsStat && processedData.precinctDemographics && processedData.precinctDemographics.precincts) {
+        districtsStat.value = processedData.precinctDemographics.precincts.length.toString();
+      }
+
+      // Update average age
+      if (processedData.precinctDemographics && processedData.precinctDemographics.registeredVoters && totalVoters > 0) {
+        // Calculate weighted average age from district data
+        let totalAge = 0;
+        let totalVotersForAge = 0;
+        
+        if (processedData.districtData) {
+          Object.values(processedData.districtData).forEach((district: any) => {
+            if (district.averageAge && district.registeredVoters) {
+              totalAge += district.averageAge * district.registeredVoters;
+              totalVotersForAge += district.registeredVoters;
+            }
+          });
+        }
+        
+        if (totalVotersForAge > 0) {
+          const avgAge = totalAge / totalVotersForAge;
+          const avgAgeStat = processedData.summaryStats.find((stat: any) => stat.label === 'Avg. Age');
+          if (avgAgeStat) {
+            avgAgeStat.value = avgAge.toFixed(1);
+          }
         }
       }
     }

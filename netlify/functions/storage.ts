@@ -129,8 +129,8 @@ class MemStorage {
       precinctDemographics.registeredVoters[precinctId] = precinctVoters.length;
       
       // Calculate turnout percentage
-      const votedCount = precinctVoters.filter((voter: any) => 
-        voter.Voted === 1 || voter.Voted === true
+      const votedCount = precinctVoters.filter((voter: any) =>
+        voter.Voted === 1 || voter.Voted === true || voter.Voted === '1'
       ).length;
       
       const turnoutPercentage = precinctVoters.length > 0
@@ -181,8 +181,8 @@ class MemStorage {
       const districtVoterCount = precinctVoters.length;
       
       // Calculate turnout
-      const votedCount = precinctVoters.filter((voter: any) => 
-        voter.Voted === 1 || voter.Voted === true
+      const votedCount = precinctVoters.filter((voter: any) =>
+        voter.Voted === 1 || voter.Voted === true || voter.Voted === '1'
       ).length;
       
       const turnout = districtVoterCount > 0 ? votedCount / districtVoterCount : 0;
@@ -250,7 +250,7 @@ class MemStorage {
         },
         {
           label: 'Voter Turnout',
-          value: `${(voters.filter((v: any) => v.Voted === 1 || v.Voted === true).length / Math.max(1, voters.length) * 100).toFixed(1)}%`,
+          value: `${(voters.filter((v: any) => v.Voted === 1 || v.Voted === true || v.Voted === '1').length / Math.max(1, voters.length) * 100).toFixed(1)}%`,
           trend: '+4.5%',
           icon: 'check-square',
           trendDirection: 'up'
@@ -264,7 +264,7 @@ class MemStorage {
         },
         {
           label: 'Avg. Age',
-          value: (voters.reduce((sum: number, v: any) => sum + (v.Age || 0), 0) / Math.max(1, voters.length)).toFixed(1),
+          value: (voters.reduce((sum: number, v: any) => sum + (parseInt(v.Age) || 0), 0) / Math.max(1, voters.length)).toFixed(1),
           trend: '+0.7',
           icon: 'calendar',
           trendDirection: 'up'
