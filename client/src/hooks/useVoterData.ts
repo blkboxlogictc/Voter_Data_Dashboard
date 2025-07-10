@@ -19,6 +19,7 @@ export default function useVoterData() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const [processingProgress, setProcessingProgress] = useState<{ progress: number; stage: string } | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<{ progress: number; stage: string } | null>(null);
   const [censusLocation, setCensusLocation] = useState<{
     stateFips: string;
     countyFips: string;
@@ -38,6 +39,8 @@ export default function useVoterData() {
 
   const uploadVoterData = async (file: File): Promise<void> => {
     try {
+      setUploadProgress({ progress: 0, stage: 'Starting voter data upload...' });
+      
       // Check file size and use appropriate upload method
       const fileSizeMB = file.size / (1024 * 1024);
       const isDevelopment = !import.meta.env.PROD;
@@ -53,9 +56,14 @@ export default function useVoterData() {
           });
         }
         
+        setUploadProgress({ progress: 10, stage: 'Reading voter data file...' });
+        
         const result = await uploadFileClientOnly(file, {
           onProgress: (progress) => {
-            console.log(`Upload progress: ${progress.toFixed(1)}%`);
+            setUploadProgress({
+              progress: 10 + (progress * 0.8), // Scale to 10-90%
+              stage: `Uploading voter data: ${progress.toFixed(1)}%`
+            });
           },
           maxFileSize: 100 // 100MB limit for client-side processing
         });
@@ -68,9 +76,14 @@ export default function useVoterData() {
             description: "Uploading large file in chunks...",
           });
           
+          setUploadProgress({ progress: 10, stage: 'Preparing chunked upload...' });
+          
           const result = await uploadLargeFile(file, {
             onProgress: (progress) => {
-              console.log(`Chunked upload progress: ${progress.toFixed(1)}%`);
+              setUploadProgress({
+                progress: 10 + (progress * 0.8), // Scale to 10-90%
+                stage: `Uploading voter data chunks: ${progress.toFixed(1)}%`
+              });
             }
           });
           fileContent = result.content;
@@ -81,9 +94,14 @@ export default function useVoterData() {
             description: "Using client-side processing for large file...",
           });
           
+          setUploadProgress({ progress: 10, stage: 'Switching to client-side upload...' });
+          
           const result = await uploadFileClientOnly(file, {
             onProgress: (progress) => {
-              console.log(`Client-only upload progress: ${progress.toFixed(1)}%`);
+              setUploadProgress({
+                progress: 10 + (progress * 0.8), // Scale to 10-90%
+                stage: `Uploading voter data: ${progress.toFixed(1)}%`
+              });
             },
             maxFileSize: 100
           });
@@ -91,6 +109,7 @@ export default function useVoterData() {
         }
       }
       
+      setUploadProgress({ progress: 95, stage: 'Validating voter data...' });
       const isValid = validateJson(fileContent);
       
       setVoterFile({
@@ -99,10 +118,16 @@ export default function useVoterData() {
         isValid
       });
       
+      setUploadProgress({ progress: 100, stage: 'Voter data upload complete!' });
+      
       if (!isValid) {
         throw new Error("Invalid voter data JSON format");
       }
+      
+      // Clear upload progress after a short delay
+      setTimeout(() => setUploadProgress(null), 1000);
     } catch (error) {
+      setUploadProgress(null);
       setError(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
@@ -110,6 +135,8 @@ export default function useVoterData() {
 
   const uploadGeoData = async (file: File): Promise<void> => {
     try {
+      setUploadProgress({ progress: 0, stage: 'Starting geographic data upload...' });
+      
       // Check file size and use appropriate upload method
       const fileSizeMB = file.size / (1024 * 1024);
       const isDevelopment = !import.meta.env.PROD;
@@ -125,9 +152,14 @@ export default function useVoterData() {
           });
         }
         
+        setUploadProgress({ progress: 10, stage: 'Reading geographic data file...' });
+        
         const result = await uploadFileClientOnly(file, {
           onProgress: (progress) => {
-            console.log(`Upload progress: ${progress.toFixed(1)}%`);
+            setUploadProgress({
+              progress: 10 + (progress * 0.8), // Scale to 10-90%
+              stage: `Uploading geographic data: ${progress.toFixed(1)}%`
+            });
           },
           maxFileSize: 100 // 100MB limit for client-side processing
         });
@@ -140,9 +172,14 @@ export default function useVoterData() {
             description: "Uploading large GeoJSON file in chunks...",
           });
           
+          setUploadProgress({ progress: 10, stage: 'Preparing chunked upload...' });
+          
           const result = await uploadLargeFile(file, {
             onProgress: (progress) => {
-              console.log(`Chunked upload progress: ${progress.toFixed(1)}%`);
+              setUploadProgress({
+                progress: 10 + (progress * 0.8), // Scale to 10-90%
+                stage: `Uploading geographic data chunks: ${progress.toFixed(1)}%`
+              });
             }
           });
           fileContent = result.content;
@@ -153,9 +190,14 @@ export default function useVoterData() {
             description: "Using client-side processing for large GeoJSON file...",
           });
           
+          setUploadProgress({ progress: 10, stage: 'Switching to client-side upload...' });
+          
           const result = await uploadFileClientOnly(file, {
             onProgress: (progress) => {
-              console.log(`Client-only upload progress: ${progress.toFixed(1)}%`);
+              setUploadProgress({
+                progress: 10 + (progress * 0.8), // Scale to 10-90%
+                stage: `Uploading geographic data: ${progress.toFixed(1)}%`
+              });
             },
             maxFileSize: 100
           });
@@ -163,6 +205,7 @@ export default function useVoterData() {
         }
       }
       
+      setUploadProgress({ progress: 95, stage: 'Validating geographic data...' });
       const isValid = validateJson(fileContent);
       
       setGeoFile({
@@ -171,10 +214,16 @@ export default function useVoterData() {
         isValid
       });
       
+      setUploadProgress({ progress: 100, stage: 'Geographic data upload complete!' });
+      
       if (!isValid) {
         throw new Error("Invalid GeoJSON format");
       }
+      
+      // Clear upload progress after a short delay
+      setTimeout(() => setUploadProgress(null), 1000);
     } catch (error) {
+      setUploadProgress(null);
       setError(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
@@ -331,6 +380,7 @@ export default function useVoterData() {
     error,
     censusLocation,
     processingProgress,
+    uploadProgress,
     uploadVoterData,
     uploadGeoData,
     processData,

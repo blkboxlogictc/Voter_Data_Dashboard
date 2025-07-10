@@ -27,6 +27,7 @@ interface FileUploadProps {
   geoFile: FileData | null;
   isLoading?: boolean;
   processingProgress?: { progress: number; stage: string } | null;
+  uploadProgress?: { progress: number; stage: string } | null;
 }
 
 export default function FileUpload({
@@ -37,6 +38,7 @@ export default function FileUpload({
   geoFile,
   isLoading = false,
   processingProgress,
+  uploadProgress,
 }: FileUploadProps) {
   const [voterDataDragActive, setVoterDataDragActive] = useState(false);
   const [geoDataDragActive, setGeoDataDragActive] = useState(false);
@@ -320,6 +322,26 @@ export default function FileUpload({
             </div>
           </div>
         </div>
+
+        {/* Upload Progress */}
+        {uploadProgress && (
+          <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-green-900">
+                {uploadProgress.stage}
+              </span>
+              <span className="text-sm text-green-700">
+                {Math.round(uploadProgress.progress)}%
+              </span>
+            </div>
+            <div className="w-full bg-green-200 rounded-full h-2">
+              <div
+                className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress.progress}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Processing Progress */}
         {processingProgress && (

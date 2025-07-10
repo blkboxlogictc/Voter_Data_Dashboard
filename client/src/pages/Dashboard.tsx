@@ -32,6 +32,7 @@ export default function Dashboard() {
     error,
     censusLocation,
     processingProgress,
+    uploadProgress,
     resetData,
   } = useVoterData();
 
@@ -114,6 +115,7 @@ export default function Dashboard() {
             geoFile={geoFile}
             isLoading={isLoading}
             processingProgress={processingProgress}
+            uploadProgress={uploadProgress}
           />
 
           <CensusLocationInput
