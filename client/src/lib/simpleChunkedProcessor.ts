@@ -164,17 +164,41 @@ export class SimpleChunkedProcessor {
         }
       });
 
-      // Merge registered voters
-      Object.assign(base.precinctDemographics.registeredVoters, chunk.precinctDemographics.registeredVoters);
+      // Merge registered voters - ADD counts instead of overwriting
+      Object.keys(chunk.precinctDemographics.registeredVoters).forEach(precinct => {
+        base.precinctDemographics.registeredVoters[precinct] =
+          (base.precinctDemographics.registeredVoters[precinct] || 0) +
+          chunk.precinctDemographics.registeredVoters[precinct];
+      });
       
-      // Merge turnout percentage
+      // Merge turnout percentage - recalculate based on combined data
       Object.assign(base.precinctDemographics.turnoutPercentage, chunk.precinctDemographics.turnoutPercentage);
       
-      // Merge party affiliation by precinct
-      Object.assign(base.precinctDemographics.partyAffiliation, chunk.precinctDemographics.partyAffiliation);
+      // Merge party affiliation by precinct - ADD counts instead of overwriting
+      Object.keys(chunk.precinctDemographics.partyAffiliation).forEach(precinct => {
+        if (!base.precinctDemographics.partyAffiliation[precinct]) {
+          base.precinctDemographics.partyAffiliation[precinct] = {};
+        }
+        
+        Object.keys(chunk.precinctDemographics.partyAffiliation[precinct]).forEach(party => {
+          base.precinctDemographics.partyAffiliation[precinct][party] =
+            (base.precinctDemographics.partyAffiliation[precinct][party] || 0) +
+            chunk.precinctDemographics.partyAffiliation[precinct][party];
+        });
+      });
       
-      // Merge racial demographics by precinct
-      Object.assign(base.precinctDemographics.racialDemographics, chunk.precinctDemographics.racialDemographics);
+      // Merge racial demographics by precinct - ADD counts instead of overwriting
+      Object.keys(chunk.precinctDemographics.racialDemographics).forEach(precinct => {
+        if (!base.precinctDemographics.racialDemographics[precinct]) {
+          base.precinctDemographics.racialDemographics[precinct] = {};
+        }
+        
+        Object.keys(chunk.precinctDemographics.racialDemographics[precinct]).forEach(race => {
+          base.precinctDemographics.racialDemographics[precinct][race] =
+            (base.precinctDemographics.racialDemographics[precinct][race] || 0) +
+            chunk.precinctDemographics.racialDemographics[precinct][race];
+        });
+      });
     }
 
     // Merge district data
