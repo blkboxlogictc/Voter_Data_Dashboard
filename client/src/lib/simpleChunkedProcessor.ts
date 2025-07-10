@@ -199,11 +199,13 @@ export class SimpleChunkedProcessor {
         console.log(`UpdateSummaryStats: Updated Registered Voters stat to: ${registeredVotersStat.value}`);
       }
 
-      // Update voter turnout stat
+      // Update voter turnout stat using age group turnout data (most reliable)
       if (processedData.ageGroupTurnout) {
         const totalVoted = processedData.ageGroupTurnout.voted.reduce((sum: number, count: number) => sum + count, 0);
         const totalNotVoted = processedData.ageGroupTurnout.notVoted.reduce((sum: number, count: number) => sum + count, 0);
         const totalEligible = totalVoted + totalNotVoted;
+        
+        console.log(`UpdateSummaryStats: Turnout calculation - Voted: ${totalVoted}, Not Voted: ${totalNotVoted}, Total Eligible: ${totalEligible}`);
         
         if (totalEligible > 0) {
           const turnoutRate = (totalVoted / totalEligible) * 100;
@@ -211,36 +213,38 @@ export class SimpleChunkedProcessor {
           const turnoutStat = processedData.summaryStats.find((stat: any) => stat.label === 'Voter Turnout');
           if (turnoutStat) {
             turnoutStat.value = `${turnoutRate.toFixed(1)}%`;
+            console.log(`UpdateSummaryStats: Updated Voter Turnout stat to: ${turnoutStat.value}`);
           }
         }
       }
 
-      // Update districts count
+      // Update districts count using precinct demographics (this should be accurate)
       const districtsStat = processedData.summaryStats.find((stat: any) => stat.label === 'Districts');
       if (districtsStat && processedData.precinctDemographics && processedData.precinctDemographics.precincts) {
         districtsStat.value = processedData.precinctDemographics.precincts.length.toString();
+        console.log(`UpdateSummaryStats: Updated Districts stat to: ${districtsStat.value}`);
       }
 
-      // Update average age
-      if (processedData.precinctDemographics && processedData.precinctDemographics.registeredVoters && totalVoters > 0) {
-        // Calculate weighted average age from district data
+      // Update average age using district data (weighted average)
+      if (processedData.districtData && totalVoters > 0) {
         let totalAge = 0;
         let totalVotersForAge = 0;
         
-        if (processedData.districtData) {
-          Object.values(processedData.districtData).forEach((district: any) => {
-            if (district.averageAge && district.registeredVoters) {
-              totalAge += district.averageAge * district.registeredVoters;
-              totalVotersForAge += district.registeredVoters;
-            }
-          });
-        }
+        Object.values(processedData.districtData).forEach((district: any) => {
+          if (district.averageAge && district.registeredVoters) {
+            totalAge += district.averageAge * district.registeredVoters;
+            totalVotersForAge += district.registeredVoters;
+          }
+        });
+        
+        console.log(`UpdateSummaryStats: Age calculation - Total Age: ${totalAge}, Total Voters for Age: ${totalVotersForAge}`);
         
         if (totalVotersForAge > 0) {
           const avgAge = totalAge / totalVotersForAge;
           const avgAgeStat = processedData.summaryStats.find((stat: any) => stat.label === 'Avg. Age');
           if (avgAgeStat) {
             avgAgeStat.value = avgAge.toFixed(1);
+            console.log(`UpdateSummaryStats: Updated Avg. Age stat to: ${avgAgeStat.value}`);
           }
         }
       }
