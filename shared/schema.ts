@@ -100,9 +100,16 @@ export type ProcessedVoterData = {
     turnoutPercentage: Record<string, number>;
     partyAffiliation: Record<string, Record<string, number>>;
     racialDemographics: Record<string, Record<string, number>>;
+    _turnoutTracking?: Record<string, { voted: number; total: number }>;
   };
   summaryStats: SummaryStatistic[];
   districtData: Record<string, any>;
+  
+  // Internal tracking data for chunked processing
+  _ageTracking?: {
+    totalAge: number;
+    totalVoters: number;
+  };
   
   // Census data integration
   censusData?: {

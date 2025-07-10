@@ -115,7 +115,8 @@ class MemStorage {
       registeredVoters: {} as Record<string, number>,
       turnoutPercentage: {} as Record<string, number>,
       partyAffiliation: {} as Record<string, Record<string, number>>,
-      racialDemographics: {} as Record<string, Record<string, number>>
+      racialDemographics: {} as Record<string, Record<string, number>>,
+      _turnoutTracking: {} as Record<string, { voted: number; total: number }>
     };
     
     // Process each precinct
@@ -138,6 +139,12 @@ class MemStorage {
         : 0;
       
       precinctDemographics.turnoutPercentage[precinctId] = turnoutPercentage;
+      
+      // Store turnout tracking data for chunked processing
+      precinctDemographics._turnoutTracking[precinctId] = {
+        voted: votedCount,
+        total: precinctVoters.length
+      };
       
       // Calculate party affiliation breakdown
       const partyBreakdown: Record<string, number> = {};

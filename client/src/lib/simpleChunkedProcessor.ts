@@ -171,8 +171,32 @@ export class SimpleChunkedProcessor {
           chunk.precinctDemographics.registeredVoters[precinct];
       });
       
-      // Merge turnout percentage - recalculate based on combined data
-      Object.assign(base.precinctDemographics.turnoutPercentage, chunk.precinctDemographics.turnoutPercentage);
+      // Track turnout data for recalculation - we need to accumulate voted/total counts
+      if (!base.precinctDemographics._turnoutTracking) {
+        base.precinctDemographics._turnoutTracking = {};
+      }
+      
+      // Accumulate turnout tracking data from chunk
+      if (chunk.precinctDemographics._turnoutTracking) {
+        Object.keys(chunk.precinctDemographics._turnoutTracking).forEach(precinct => {
+          if (!base.precinctDemographics._turnoutTracking[precinct]) {
+            base.precinctDemographics._turnoutTracking[precinct] = { voted: 0, total: 0 };
+          }
+          base.precinctDemographics._turnoutTracking[precinct].voted +=
+            chunk.precinctDemographics._turnoutTracking[precinct].voted;
+          base.precinctDemographics._turnoutTracking[precinct].total +=
+            chunk.precinctDemographics._turnoutTracking[precinct].total;
+        });
+      }
+      
+      // Recalculate turnout percentages based on accumulated data
+      Object.keys(base.precinctDemographics._turnoutTracking || {}).forEach(precinct => {
+        const tracking = base.precinctDemographics._turnoutTracking[precinct];
+        if (tracking.total > 0) {
+          base.precinctDemographics.turnoutPercentage[precinct] =
+            ((tracking.voted / tracking.total) * 100).toFixed(1);
+        }
+      });
       
       // Merge party affiliation by precinct - ADD counts instead of overwriting
       Object.keys(chunk.precinctDemographics.partyAffiliation).forEach(precinct => {
